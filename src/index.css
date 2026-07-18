@@ -1,0 +1,35 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-serif text-wood-800;
+  }
+
+  ::selection {
+    @apply bg-moss-200 text-wood-900;
+  }
+}
+
+@layer components {
+  /* Botão principal — estilo "carimbo de biblioteca" */
+  .btn-primary {
+    @apply inline-flex items-center justify-center rounded-sm bg-moss-600 px-5 py-2.5
+           font-sans text-sm font-semibold text-parchment shadow-shelf
+           transition-colors hover:bg-moss-700 focus-visible:outline
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-500;
+  }
+
+  .btn-secondary {
+    @apply inline-flex items-center justify-center rounded-sm border border-wood-400 bg-transparent px-5 py-2.5
+           font-sans text-sm font-semibold text-wood-700
+           transition-colors hover:bg-wood-100 focus-visible:outline
+           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wood-400;
+  }
+
+  /* Card estilo "capa de livro / ficha de catálogo" */
+  .card-shelf {
+    @apply rounded-sm border border-wood-200 bg-parchment-light shadow-shelf;
+  }
+}
