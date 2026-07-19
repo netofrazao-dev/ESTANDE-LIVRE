@@ -83,7 +83,7 @@ export default function Home({ searchTerm = '' }) {
 
           <p className="max-w-lg font-sans text-base leading-relaxed text-wood-500 md:text-lg">
             Alugue os livros que você sempre quis ler, sem compromisso de comprar a estante
-            inteira. Receba em casa, devolva quando terminar.
+            inteira. Reserve online, retire na loja e devolva quando terminar.
           </p>
 
           <div className="mt-2 flex flex-wrap items-center justify-center gap-4">
@@ -96,9 +96,50 @@ export default function Home({ searchTerm = '' }) {
             >
               Explorar catálogo
             </Button>
-            <Button variant="ghost" size="lg">
+            <Button
+              variant="ghost"
+              size="lg"
+              onClick={() =>
+                document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })
+              }
+            >
               Como funciona
             </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* Como funciona */}
+      <section id="como-funciona" className="border-b border-wood-200/60 bg-parchment-light">
+        <div className="mx-auto max-w-5xl px-6 py-16 md:px-12">
+          <h2 className="mb-10 text-center text-3xl font-bold text-wood-800">Como funciona</h2>
+
+          <div className="grid gap-8 sm:grid-cols-3">
+            {[
+              {
+                step: '1',
+                title: 'Reserve online',
+                text: 'Escolha até 3 livros e monte sua sacola de leitura — sem pagar nada ainda.',
+              },
+              {
+                step: '2',
+                title: 'Retire e pague no balcão',
+                text: 'Venha buscar os livros na loja. O pagamento é feito na hora, em dinheiro, débito ou crédito.',
+              },
+              {
+                step: '3',
+                title: 'Leia e devolva em 14 dias',
+                text: 'Aproveite a leitura com calma e devolva dentro do prazo para não pagar multa.',
+              },
+            ].map((item) => (
+              <div key={item.step} className="text-center">
+                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-moss-100 font-serif text-xl font-bold text-moss-700">
+                  {item.step}
+                </div>
+                <h3 className="mb-2 font-serif text-lg font-semibold text-wood-800">{item.title}</h3>
+                <p className="font-sans text-sm leading-relaxed text-wood-500">{item.text}</p>
+              </div>
+            ))}
           </div>
         </div>
       </section>

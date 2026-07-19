@@ -45,7 +45,7 @@ export async function createRentalsFromCart(items, userId, { termsAcceptedAt } =
 export async function fetchMyActiveRentals(userId) {
   const { data, error } = await supabase
     .from('rentals')
-    .select('id, rented_at, due_date, status, total_price, books(id, title, author, cover_url)')
+    .select('id, rented_at, due_date, status, total_price, payment_status, books(id, title, author, cover_url)')
     .eq('user_id', userId)
     .in('status', ['active', 'overdue'])
     .order('due_date', { ascending: true });
@@ -59,10 +59,26 @@ export async function fetchAllActiveRentals() {
   const { data, error } = await supabase
     .from('rentals')
     .select(
-      'id, rented_at, due_date, status, total_price, books(id, title, author, cover_url), users(id, full_name, email)'
+      'id, rented_at, due_date, status, total_price, payment_status, books(id, title, author, cover_url), users(id, full_name, email)'
     )
     .in('status', ['active', 'overdue'])
     .order('due_date', { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+/**
+ * [ADMIN] Confirma o pagamento no momento da retirada (balcão).
+ * Modelo de negócio: reserva 100% online, pagamento presencial.
+ */
+export async function confirmPaymentReceived(rentalId) {
+  const { data, error } = await supabase
+    .from('rentals')
+    .update({ payment_status: 'paid', payment_confirmed_at: new Date().toISOString() })
+    .eq('id', rentalId)
+    .select()
+    .single();
 
   if (error) throw error;
   return data;

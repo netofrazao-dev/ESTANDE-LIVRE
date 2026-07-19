@@ -16,7 +16,13 @@
 create or replace function public.prevent_role_self_escalation()
 returns trigger as $$
 begin
-  if new.role is distinct from old.role and not public.is_admin() then
+  -- Só bloqueia quando existe um usuário autenticado (auth.uid() preenchido)
+  -- tentando mudar a própria role sozinho. Contextos de confiança total
+  -- (SQL Editor, service role, migrations) têm auth.uid() = NULL e
+  -- continuam liberados — necessário para o bootstrap do primeiro admin.
+  if new.role is distinct from old.role
+     and auth.uid() is not null
+     and not public.is_admin() then
     raise exception 'Você não tem permissão para alterar o campo role.';
   end if;
   return new;

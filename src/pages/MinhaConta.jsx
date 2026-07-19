@@ -119,6 +119,13 @@ export default function MinhaConta() {
                     >
                       Devolver até <span className="font-semibold">{formatDate(rental.due_date)}</span>
                     </p>
+                    {rental.payment_status === 'paid' ? (
+                      <p className="font-sans text-xs font-semibold text-moss-700">Pagamento recebido ✓</p>
+                    ) : (
+                      <p className="font-sans text-xs font-semibold text-wood-500">
+                        Pague na retirada: {rental.total_price != null ? `R$ ${Number(rental.total_price).toFixed(2).replace('.', ',')}` : '—'}
+                      </p>
+                    )}
                   </div>
                 </div>
 

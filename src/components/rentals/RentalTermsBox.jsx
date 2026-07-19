@@ -20,20 +20,25 @@ export default function RentalTermsBox({ accepted, onAcceptedChange }) {
           Painel do Leitor.
         </p>
         <p className="mb-2">
-          <strong>2. Multa por atraso.</strong> A devolução após o prazo previsto gera multa
+          <strong>2. Pagamento.</strong> A reserva é feita 100% online, mas o pagamento é
+          realizado presencialmente, no balcão, no momento da retirada do(s) livro(s).
+          Aceitamos dinheiro, débito e crédito.
+        </p>
+        <p className="mb-2">
+          <strong>3. Multa por atraso.</strong> A devolução após o prazo previsto gera multa
           diária de R$ 2,00 por livro, acumulada até a efetiva devolução do exemplar.
         </p>
         <p className="mb-2">
-          <strong>3. Danos ao acervo.</strong> Livros devolvidos com avarias leves (manchas,
+          <strong>4. Danos ao acervo.</strong> Livros devolvidos com avarias leves (manchas,
           dobras, capa danificada) estão sujeitos a taxa de reparo. Exemplares devolvidos
           inutilizados ou não devolvidos serão cobrados pelo valor integral de reposição.
         </p>
         <p className="mb-2">
-          <strong>4. Limite por aluguel.</strong> É permitido reservar até 3 (três) livros por
+          <strong>5. Limite por aluguel.</strong> É permitido reservar até 3 (três) livros por
           sacola/aluguel simultâneo.
         </p>
         <p>
-          <strong>5. Boa conservação.</strong> O leitor se compromete a manter os livros em
+          <strong>6. Boa conservação.</strong> O leitor se compromete a manter os livros em
           local seco, longe de umidade e manuseá-los com cuidado durante todo o período de
           locação.
         </p>

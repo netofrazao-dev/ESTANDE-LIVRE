@@ -145,6 +145,9 @@ export default function CartDrawer({ onCheckout, isSubmitting = false, checkoutE
         {/* Termos de locação — obrigatório antes de finalizar */}
         {items.length > 0 && (
           <div className="border-t border-wood-200 px-6 py-5">
+            <p className="mb-4 rounded-sm bg-wood-50 px-3 py-2 font-sans text-xs text-wood-600">
+              💳 Reserva 100% online — o pagamento é feito no balcão, na retirada dos livros.
+            </p>
             <RentalTermsBox accepted={termsAccepted} onAcceptedChange={setTermsAccepted} />
           </div>
         )}

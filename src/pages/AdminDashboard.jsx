@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { fetchAllActiveRentals, confirmReturn, isOverdue } from '../services/rentals.service';
+import { fetchAllActiveRentals, confirmReturn, confirmPaymentReceived, isOverdue } from '../services/rentals.service';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
 import ReturnConfirmModal from '../components/rentals/ReturnConfirmModal';
@@ -20,6 +20,7 @@ export default function AdminDashboard() {
   const [error, setError] = useState(null);
   const [rentalInModal, setRentalInModal] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [confirmingPaymentId, setConfirmingPaymentId] = useState(null);
 
   function loadRentals() {
     setIsLoading(true);
@@ -47,7 +48,20 @@ export default function AdminDashboard() {
     }
   }
 
+  async function handleConfirmPayment(rentalId) {
+    setConfirmingPaymentId(rentalId);
+    try {
+      const updated = await confirmPaymentReceived(rentalId);
+      setRentals((prev) => prev.map((r) => (r.id === rentalId ? { ...r, ...updated } : r)));
+    } catch (err) {
+      setError(err.message ?? 'Não foi possível confirmar o pagamento.');
+    } finally {
+      setConfirmingPaymentId(null);
+    }
+  }
+
   const overdueCount = rentals.filter(isOverdue).length;
+  const pendingPaymentCount = rentals.filter((r) => r.payment_status !== 'paid').length;
 
   return (
     <div className="mx-auto max-w-6xl px-6 py-14 md:px-12">
@@ -63,6 +77,9 @@ export default function AdminDashboard() {
             {rentals.length} empréstimo(s) em aberto
             {overdueCount > 0 && (
               <span className="font-semibold text-terracotta-700"> · {overdueCount} atrasado(s)</span>
+            )}
+            {pendingPaymentCount > 0 && (
+              <span className="text-wood-500"> · {pendingPaymentCount} aguardando retirada</span>
             )}
           </p>
         </div>
@@ -100,6 +117,9 @@ export default function AdminDashboard() {
                 </th>
                 <th className="px-5 py-3 font-sans text-xs font-semibold uppercase tracking-wide text-wood-600">
                   Status
+                </th>
+                <th className="px-5 py-3 font-sans text-xs font-semibold uppercase tracking-wide text-wood-600">
+                  Pagamento
                 </th>
                 <th className="px-5 py-3 font-sans text-xs font-semibold uppercase tracking-wide text-wood-600">
                   Ação
@@ -142,9 +162,34 @@ export default function AdminDashboard() {
                       <Badge status={overdue ? 'overdue' : 'active'} />
                     </td>
                     <td className="px-5 py-4">
-                      <Button variant="secondary" size="sm" onClick={() => setRentalInModal(rental)}>
-                        Confirmar devolução
-                      </Button>
+                      {rental.payment_status === 'paid' ? (
+                        <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-moss-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-moss-500" />
+                          Pago na retirada
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 font-sans text-xs font-semibold text-wood-500">
+                          <span className="h-1.5 w-1.5 rounded-full bg-wood-300" />
+                          Aguardando retirada
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex flex-wrap gap-2">
+                        {rental.payment_status !== 'paid' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            isLoading={confirmingPaymentId === rental.id}
+                            onClick={() => handleConfirmPayment(rental.id)}
+                          >
+                            Confirmar retirada
+                          </Button>
+                        )}
+                        <Button variant="secondary" size="sm" onClick={() => setRentalInModal(rental)}>
+                          Confirmar devolução
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 );
