@@ -1,140 +1,205 @@
-# 📚 Estante Livre
+# Estande Livre
 
-Plataforma de aluguel de livros — React (Vite) + Tailwind CSS + Zustand + Supabase.
+Locadora de livros ponta a ponta: portal do leitor, contratos digitais, motor de multas em tempo real e backoffice administrativo. Uma biblioteca clássica, agora em código.
 
-## Status: Pagamento na retirada + Automação (status atrasado + e-mails) ✅
+---
 
-- [x] Schema SQL (Supabase) com RLS
-- [x] Tema visual rústico (Tailwind config)
-- [x] Estrutura de pastas do frontend
-- [x] Componentes base (Button, Badge, BookCard)
-- [x] Navbar, Home, Sacola de leitura (Zustand)
-- [x] Autenticação (Supabase Auth: login/cadastro/logout)
-- [x] Checkout → grava aluguéis no Supabase (14 dias de prazo)
-- [x] Painel do leitor (Minha Conta)
-- [x] Admin Dashboard (rota protegida, confirmar devolução)
-- [x] Termos de Locação obrigatórios no checkout
-- [x] Alerta de vencimento próximo + multa estimada por atraso
-- [x] Checklist de devolução no Admin (danos + confirmação de multa)
-- [x] P0 — Correção de falha de RLS (auto-promoção a admin)
-- [x] P0 — Regras de negócio (limite de 3 aluguéis, due_date/total_price) movidas para o banco
-- [x] P0 — Catálogo conectado ao Supabase (sem dados mockados)
-- [x] P0 — CRUD de livros no admin (`/admin/livros`)
-- [x] Upload de capas via Supabase Storage (bucket `book-covers`)
-- [x] Página de detalhes do livro (`/livro/:id`)
-- [x] **Status "atrasado" automático (pg_cron, diário)**
-- [x] **E-mail de confirmação de aluguel (Database Webhook → Edge Function)**
-- [x] **E-mail de lembrete (2 dias antes) e aviso de atraso (pg_cron + Edge Function)**
-- [x] **Modelo de pagamento definido e implementado: reserva 100% online, pagamento na retirada (balcão)**
-- [ ] UX/robustez: sacola persistente, menu mobile completo, paginação
+## O que este projeto é
 
-## Como rodar (frontend)
+Uma plataforma **completa** para locação de livros, dividida em três eixos:
+
+1. **Portal do Leitor** — vitrine com destaques, catálogo com filtros, página de detalhes rica, sacola de leitura lateral com previsão de devolução, checkout com termo de locação estilizado como documento antigo.
+2. **Motor de Negócios** — aceite digital com timestamp, cálculo dinâmico de multas por atraso, taxas de dano/extravio, painel do leitor com KPIs em tempo real.
+3. **Backoffice Admin** — dashboard com atrasos em destaque, CRUD completo de acervo (com upload de capas para Supabase Storage), listagem de todos os empréstimos, fluxo de auditoria de devoluções com modal avaliativo de condição.
+
+---
+
+## Stack
+
+- **Front:** React 18 + Vite 5
+- **Estilo:** Tailwind CSS 3 com design system customizado (tokens, tipografia, animações)
+- **Estado:** Zustand para sacola + auth · React Query para cache de servidor
+- **Animações:** Framer Motion
+- **Backend:** Supabase (Postgres + Auth + Storage + RLS)
+- **Roteamento:** React Router 6
+- **Ícones:** Lucide
+- **Datas:** date-fns com locale pt-BR
+
+---
+
+## Design System
+
+Fugindo do visual "plástico" da web moderna, tudo é pensado como uma **biblioteca clássica**:
+
+- **Paleta**: pergaminho `#F9F6F0` (fundo), café `#3E2723` (texto), verde musgo `#5A6E4A` (CTA), terracota `#B85C3E` (atrasos/alertas), sépia `#8B6F47` (linhas/detalhes)
+- **Tipografia**: Playfair Display (títulos), Inter (corpo), JetBrains Mono (números/datas em estilo datador de biblioteca)
+- **Signature**: cards de livro como fichas catalográficas — número de tombo, categoria em small caps, elevação suave no hover simulando o gesto de retirar da estante
+- **Detalhes**: divisores em linha dupla estilo página de livro antiga, datas no formato `12 · MAI · 2026`, "carimbos" ligeiramente inclinados para status
+
+---
+
+## Setup
+
+### 1. Instalar dependências
 
 ```bash
 npm install
-cp .env.example .env.local   # preencha com suas credenciais do Supabase
+```
+
+### 2. Configurar Supabase
+
+Crie um projeto no [Supabase](https://supabase.com/) e copie o `.env.example` para `.env`:
+
+```bash
+cp .env.example .env
+```
+
+Preencha com:
+
+```
+VITE_SUPABASE_URL=https://seu-projeto.supabase.co
+VITE_SUPABASE_ANON_KEY=sua-anon-key
+```
+
+### 3. Rodar as migrations no Supabase
+
+Abra o **SQL Editor** do seu projeto Supabase e execute, **nesta ordem**:
+
+1. `supabase/schema.sql` — cria tabelas, índices, triggers e funções
+2. `supabase/rls-policies.sql` — configura Row Level Security
+3. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
+
+### 4. Criar o bucket de capas
+
+O script `schema.sql` já cria o bucket `book-covers` público. Se precisar recriar manualmente:
+
+- Storage → Create new bucket → nome: `book-covers` → **Public bucket** marcado.
+
+### 5. Promover um usuário a admin
+
+Depois de fazer signup pela interface, rode no SQL Editor:
+
+```sql
+update public.profiles
+set role = 'admin'
+where email = 'seu-email@exemplo.com';
+```
+
+### 6. Rodar em desenvolvimento
+
+```bash
 npm run dev
 ```
 
-**Scripts SQL — rode nesta ordem no SQL Editor do Supabase:**
-1. `supabase/schema.sql`
-2. `supabase/phase4_auth_sync.sql`
-3. `supabase/phase5_contracts_fees.sql`
-4. `supabase/p0_security_and_rules.sql`
-5. `supabase/storage_book_covers.sql`
-6. `supabase/payment_pickup_model.sql` — adiciona `payment_status`/`payment_confirmed_at` (pagamento na retirada)
-7. `supabase/automation_overdue_status.sql` — status "atrasado" automático (autocontido, não precisa de nada externo)
-8. `supabase/automation_email_cron.sql` — agenda o e-mail diário de lembretes (**rode só depois** de fazer o deploy das Edge Functions, passo abaixo)
+Acesse [http://localhost:5173](http://localhost:5173).
 
-Para testar o Admin Dashboard, promova seu usuário de teste:
-```sql
-update public.users set role = 'admin' where email = 'seu-email@exemplo.com';
-```
+---
 
-## Como ativar os e-mails (Edge Functions)
-
-Os e-mails usam [Resend](https://resend.com) (tem plano gratuito, e funciona sem verificar domínio próprio se você mandar só para o e-mail da sua conta Resend — pra produção de verdade, verifique um domínio lá).
-
-```bash
-# 1. Login e link do projeto (uma vez só)
-npx supabase login
-npx supabase link --project-ref SEU_PROJECT_REF
-
-# 2. Configurar os secrets usados pelas funções
-npx supabase secrets set RESEND_API_KEY=re_xxx FROM_EMAIL="Estante Livre <onboarding@resend.dev>"
-
-# 3. Deploy das duas funções
-npx supabase functions deploy send-rental-confirmation
-npx supabase functions deploy send-due-reminders --no-verify-jwt
-```
-
-Depois do deploy:
-- **E-mail de confirmação de aluguel**: configure em *Painel do Supabase → Database → Webhooks → Create a new hook* (tabela `rentals`, evento `INSERT`, tipo "Supabase Edge Functions", função `send-rental-confirmation`). O painel cuida da autenticação sozinho.
-- **E-mail de lembrete diário**: rode `automation_email_cron.sql`, substituindo `COLE_SUA_SERVICE_ROLE_KEY_AQUI` (Project Settings → API → service_role) e `<PROJECT_REF>` pelos dados do seu projeto. A chave fica guardada no **Vault** do Supabase, nunca em texto puro.
-
-> Não tenho como testar o envio de verdade a partir daqui, já que isso depende de credenciais reais do seu projeto Supabase e da sua conta Resend — o código está pronto e documentado, mas o primeiro teste de ponta a ponta precisa ser feito com suas chaves.
-
-## O que mudou nesta rodada
-
-**Pagamento na retirada (`payment_pickup_model.sql`):**
-- Modelo de negócio definido com você: reserva 100% online, pagamento presencial no balcão.
-- Novas colunas em `rentals`: `payment_status` (`pending`/`paid`) e `payment_confirmed_at`.
-- Admin Dashboard ganhou uma coluna "Pagamento" e o botão **"Confirmar retirada"**, separado do "Confirmar devolução" — refletindo que são dois momentos distintos (retirada+pagamento vs. devolução).
-- Painel do Leitor mostra "Pague na retirada: R$ X,XX" ou "Pagamento recebido ✓" em cada aluguel.
-- Termos de Locação e a sacola agora deixam esse fluxo explícito antes do checkout.
-
-**Automação (`automation_overdue_status.sql`, `automation_email_cron.sql`, `supabase/functions/`):**
-- Um job `pg_cron` roda todo dia de madrugada e marca como `overdue` qualquer aluguel vencido — deixa de depender só do cálculo no front-end.
-- E-mail de **confirmação de reserva** (já mencionando o pagamento na retirada) disparado automaticamente por um Database Webhook assim que o checkout grava a linha em `rentals`.
-- E-mail de **lembrete 2 dias antes** do vencimento e de **aviso de atraso**, enviados por um cron diário (`send-due-reminders`).
-- Segredos (API key da Resend, service role key) ficam em Supabase Secrets/Vault — nunca em texto puro no código ou no SQL.
-
-**Storage (`storage_book_covers.sql`, `storage.service.js`, `BookFormModal.jsx`):**
-- Bucket público `book-covers` no Supabase Storage: qualquer visitante pode *ver* as capas (necessário pro catálogo funcionar sem login), mas só admin pode enviar/substituir/remover arquivos.
-- O formulário de livro no admin trocou o campo "URL da capa" por um upload de arquivo de verdade (JPG/PNG/WEBP, até 5MB), com preview antes de salvar.
-
-**Página de detalhes (`BookDetail.jsx`, rota `/livro/:id`):**
-- Substitui o modal simplificado que existia antes.
-- Mostra capa grande, categoria, sinopse completa, editora/ano/ISBN/idioma, e o mesmo botão de adicionar/remover da sacola usado no catálogo.
-- Clicar em qualquer `BookCard` (catálogo ou busca) agora navega para essa página em vez de abrir um modal.
-
-## Árvore de diretórios
+## Estrutura de pastas
 
 ```
-estante-livre/
-├── index.html
-├── tailwind.config.js       # paleta rústica + tipografia (Playfair Display / Inter)
-├── postcss.config.js
-├── vite.config.js
-├── package.json
-├── .env.example
-├── supabase/
-│   └── schema.sql           # tabelas, triggers e políticas RLS
-└── src/
-    ├── main.jsx
-    ├── App.jsx
-    ├── index.css             # diretivas Tailwind + classes utilitárias (.btn-primary, .card-shelf...)
-    ├── lib/
-    │   └── supabaseClient.js # instância única do client Supabase
-    ├── services/             # camada de acesso a dados (1 arquivo por entidade)
-    │   └── books.service.js  # ex: listBooks(), createRental(), etc.
-    ├── store/                # estado global (Zustand)
-    │   └── useAuthStore.js   # ex: useCartStore, useRentalStore...
-    ├── components/
-    │   ├── ui/                # botões, inputs, modais — componentes "burros" reutilizáveis
-    │   ├── layout/             # Header, Footer, Sidebar, Shell da aplicação
-    │   ├── books/              # BookCard, BookGrid, BookDetails...
-    │   ├── rentals/            # RentalCard, RentalHistory, ReturnButton...
-    │   └── auth/               # LoginForm, RegisterForm, ProtectedRoute...
-    ├── pages/                 # uma página por rota (Home, Catalog, BookDetail, MyRentals, Admin...)
-    ├── hooks/                 # hooks customizados (useDebounce, useBooks...)
-    ├── utils/                 # formatadores, helpers de data/preço
-    └── assets/                # imagens, texturas, ícones estáticos
+src/
+├── components/
+│   ├── admin/            # Layout do backoffice
+│   ├── books/            # BookCard, BookGrid, BookFilters
+│   ├── cart/             # Sacola de leitura (slide-over)
+│   ├── layout/           # Header, Footer, Layout, ProtectedRoute
+│   └── ui/               # Button, Input, Modal, Badge, EmptyState
+├── hooks/
+│   ├── useBooks.js       # React Query — livros
+│   └── useRentals.js     # React Query — aluguéis, checkout, devoluções
+├── lib/
+│   ├── supabase.js       # Cliente Supabase
+│   └── utils.js          # cn(), formatMoney, calculateFine, formatDatador...
+├── pages/
+│   ├── admin/            # Dashboard, Books, Rentals, Returns
+│   ├── Home.jsx
+│   ├── Catalog.jsx
+│   ├── BookDetail.jsx
+│   ├── Checkout.jsx
+│   ├── Login.jsx
+│   ├── Signup.jsx
+│   ├── MyRentals.jsx
+│   └── NotFound.jsx
+├── stores/
+│   ├── authStore.js      # Zustand — auth
+│   └── cartStore.js      # Zustand — sacola persistente
+├── App.jsx
+├── main.jsx
+└── index.css             # Design system: variáveis, componentes, utilitários
+
+supabase/
+├── schema.sql            # DDL completo
+├── rls-policies.sql      # Row Level Security
+└── seed.sql              # Categorias + livros de exemplo
 ```
 
-### Convenções
+---
 
-- **Services** nunca são chamados diretamente de dentro de um componente complexo sem passar por
-  um hook ou store — eles ficam isolados para facilitar testes e trocas futuras.
-- **Stores Zustand** guardam apenas estado *global* (sessão do usuário, carrinho de aluguel). Estado local de UI fica em `useState` dentro do próprio componente.
-- **Paleta de cores** (ver `tailwind.config.js`): `parchment` (fundo), `wood` (textos/madeira), `moss` (ação primária), `terracotta` (destaque/alerta).
+## Modelo de dados
+
+- `profiles` — estende `auth.users` com `full_name`, `phone`, `role` (`user` ou `admin`)
+- `categories` — taxonomia do acervo
+- `books` — catálogo com `total_copies`, `available_copies`, `featured`, `catalog_number` (nº de tombo)
+- `rentals` — transacional: `user_id`, `book_id`, `rented_at`, `due_date`, `returned_at`, `status`, `daily_fine_rate`, `late_fee`, `damage_fee`, `terms_accepted_at`
+
+Funções RPC:
+- `decrement_available_copies(book_id)` — no checkout
+- `increment_available_copies(book_id)` — na devolução (exceto extravio)
+- `is_admin()` — usada pelas policies RLS
+- View `late_rentals_view` — aluguéis atrasados com dias e multa acumulada
+
+---
+
+## Rotas
+
+| Rota | Descrição | Auth |
+|------|-----------|------|
+| `/` | Home com hero, destaques, categorias | público |
+| `/acervo` | Catálogo com filtros e busca | público |
+| `/livro/:slug` | Detalhe do livro + botão sacola | público |
+| `/checkout` | Termo de locação + confirmação | usuário |
+| `/minha-estante` | Painel do leitor + multas em tempo real | usuário |
+| `/entrar` `/cadastrar` | Autenticação | público |
+| `/admin` | Dashboard admin | admin |
+| `/admin/livros` | CRUD acervo | admin |
+| `/admin/emprestimos` | Todos os aluguéis | admin |
+| `/admin/devolucoes` | Fluxo de auditoria | admin |
+
+---
+
+## Configurações (via .env)
+
+```
+VITE_MAX_BOOKS_PER_RENTAL=3   # Livros por locação
+VITE_RENTAL_DAYS=14           # Prazo padrão em dias
+VITE_DAILY_FINE=2.00          # R$ por dia de atraso
+```
+
+Taxas fixas em `src/lib/utils.js`:
+- `damageFee`: R$ 50,00 (dano)
+- `lossFee`: R$ 150,00 (extravio)
+
+---
+
+## Deploy
+
+### Vercel
+
+1. Conecte o repo à Vercel
+2. Framework preset: **Vite**
+3. Adicione as variáveis de ambiente (as `VITE_*`)
+4. Deploy
+
+### Netlify
+
+1. Build command: `npm run build`
+2. Publish directory: `dist`
+3. Adicione um `_redirects` em `public/`:
+   ```
+   /*  /index.html  200
+   ```
+
+---
+
+## Feito à mão, com café, por leitores.

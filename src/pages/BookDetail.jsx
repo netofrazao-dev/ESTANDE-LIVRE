@@ -1,197 +1,171 @@
-import { useEffect, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { getBookById } from '../services/books.service';
-import Badge from '../components/ui/Badge';
-import Button from '../components/ui/Button';
-import { useCartStore } from '../store/useCartStore';
-import { formatCurrency } from '../utils/rentalRules';
+import { useParams, Link } from 'react-router-dom'
+import { ArrowLeft, BookOpen, Calendar, Hash, User } from 'lucide-react'
+import { useBook } from '@/hooks/useBooks'
+import { useCartStore } from '@/stores/cartStore'
+import Button from '@/components/ui/Button'
+import Badge from '@/components/ui/Badge'
+import { motion } from 'framer-motion'
 
 export default function BookDetail() {
-  const { id } = useParams();
-
-  const [book, setBook] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const items = useCartStore((state) => state.items);
-  const addItem = useCartStore((state) => state.addItem);
-  const removeItem = useCartStore((state) => state.removeItem);
-  const lastError = useCartStore((state) => state.lastError);
-
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    setError(null);
-
-    getBookById(id)
-      .then((data) => {
-        if (isMounted) setBook(data);
-      })
-      .catch(() => {
-        if (isMounted) setError('Não encontramos esse livro na nossa estante.');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, [id]);
+  const { slug } = useParams()
+  const { data: book, isLoading, error } = useBook(slug)
+  const addBook = useCartStore((s) => s.addBook)
+  const cartItems = useCartStore((s) => s.items)
 
   if (isLoading) {
     return (
-      <div className="mx-auto max-w-5xl px-6 py-24 text-center">
-        <p className="font-serif italic text-wood-500">Procurando na estante...</p>
-      </div>
-    );
+      <div className="container-book py-20 text-center text-sepia">Carregando…</div>
+    )
   }
 
   if (error || !book) {
     return (
-      <div className="mx-auto max-w-5xl px-6 py-24 text-center">
-        <p className="font-serif text-lg italic text-wood-500">{error}</p>
-        <Link to="/" className="mt-4 inline-block font-sans text-sm font-semibold text-moss-700 hover:underline">
-          ← Voltar ao catálogo
+      <div className="container-book py-20 text-center">
+        <p className="text-cafe mb-4">Este título não está no nosso acervo.</p>
+        <Link to="/acervo" className="text-musgo underline underline-offset-4">
+          Voltar ao acervo
         </Link>
       </div>
-    );
+    )
   }
 
-  const inCart = items.some((item) => item.id === book.id);
-  const isCartFull = items.length >= 3;
-  const isAvailable = book.available_copies > 0;
-  const addDisabled = !isAvailable || (isCartFull && !inCart);
-
-  const handleToggleCart = () => {
-    if (inCart) {
-      removeItem(book.id);
-      return;
-    }
-    addItem(book);
-  };
+  const isAvailable = (book.available_copies || 0) > 0
+  const inCart = cartItems.some((i) => i.book_id === book.id)
+  const catalogNumber = String(book.catalog_number || book.id?.slice(0, 8)).toUpperCase()
 
   return (
-    <div className="mx-auto max-w-5xl px-6 py-14 md:px-12">
+    <div className="container-book py-12 md:py-16">
       <Link
-        to="/"
-        className="mb-8 inline-flex items-center gap-1.5 font-sans text-sm text-wood-500 transition-colors duration-300 hover:text-wood-700"
+        to="/acervo"
+        className="inline-flex items-center gap-2 text-sm text-cafe/60 hover:text-cafe mb-10 transition-colors"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M10.5 19.5L3 12m0 0l7.5-7.5M3 12h18" />
-        </svg>
-        Voltar ao catálogo
+        <ArrowLeft className="w-4 h-4" /> Voltar ao acervo
       </Link>
 
-      <div className="grid gap-10 md:grid-cols-[280px_1fr]">
+      <div className="grid md:grid-cols-[minmax(0,1fr)_minmax(0,1.4fr)] gap-12 lg:gap-20">
         {/* Capa */}
-        <div className="relative mx-auto w-full max-w-[220px] shrink-0 md:mx-0 md:max-w-none">
-          <div className="aspect-[2/3] w-full overflow-hidden rounded-md bg-wood-100 shadow-shelf ring-1 ring-wood-200/70">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="relative"
+        >
+          <div className="aspect-[2/3] bg-pergaminho-darker overflow-hidden shadow-book-hover">
             {book.cover_url ? (
               <img
                 src={book.cover_url}
-                alt={`Capa do livro ${book.title}`}
-                className="h-full w-full object-cover"
+                alt=""
+                className="w-full h-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full flex-col items-center justify-center gap-2 bg-gradient-to-br from-wood-100 to-wood-200 px-4 text-center">
-                <svg
-                  className="h-10 w-10 text-wood-400"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                  strokeWidth={1.5}
-                  aria-hidden="true"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25"
-                  />
-                </svg>
-                <span className="font-serif text-xs italic text-wood-500">Sem capa disponível</span>
+              <div className="w-full h-full flex items-center justify-center text-sepia/40">
+                <BookOpen className="w-16 h-16" />
               </div>
             )}
           </div>
-        </div>
 
-        {/* Informações */}
-        <div>
-          {book.categories?.name && (
-            <span className="mb-3 inline-block rounded-full border border-moss-300/60 bg-moss-50 px-3 py-1 font-sans text-xs font-semibold uppercase tracking-wide text-moss-700">
-              {book.categories.name}
-            </span>
+          {book.featured && (
+            <div className="absolute -top-3 -left-3">
+              <Badge variant="musgo">Destaque</Badge>
+            </div>
           )}
+        </motion.div>
 
-          <h1 className="font-serif text-3xl font-bold leading-tight text-wood-800 md:text-4xl">
+        {/* Info */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.15 }}
+        >
+          <div className="flex items-center gap-3 mb-4 text-xs">
+            <span className="font-mono text-sepia tracking-widest">
+              № {catalogNumber}
+            </span>
+            {book.category && (
+              <>
+                <span className="text-sepia/30">·</span>
+                <span className="eyebrow">{book.category.name}</span>
+              </>
+            )}
+          </div>
+
+          <h1 className="font-display text-display-lg text-balance leading-[1.05]">
             {book.title}
           </h1>
-          <p className="mt-1.5 font-sans text-lg text-wood-500">{book.author}</p>
 
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <Badge status={isAvailable ? 'available' : 'rented'} />
-            {book.daily_rental_price != null && (
-              <span className="font-serif text-lg font-semibold text-moss-700">
-                {formatCurrency(book.daily_rental_price)}
-                <span className="font-sans text-sm font-normal text-wood-400"> / dia</span>
-              </span>
-            )}
+          <div className="mt-4 flex items-center gap-2 text-cafe/70">
+            <User className="w-4 h-4" />
+            <span className="text-lg italic">{book.author}</span>
           </div>
 
+          <div className="rule-double my-8" />
+
+          {/* Ficha técnica */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+            <div>
+              <div className="eyebrow mb-1">Páginas</div>
+              <div className="font-mono text-lg tabular-nums">{book.pages || '—'}</div>
+            </div>
+            <div>
+              <div className="eyebrow mb-1">Editora</div>
+              <div className="text-sm">{book.publisher || '—'}</div>
+            </div>
+            <div>
+              <div className="eyebrow mb-1">Ano</div>
+              <div className="font-mono text-lg tabular-nums">{book.year || '—'}</div>
+            </div>
+            <div>
+              <div className="eyebrow mb-1">Idioma</div>
+              <div className="text-sm">{book.language || 'Português'}</div>
+            </div>
+          </div>
+
+          {/* Sinopse */}
           {book.synopsis && (
-            <p className="mt-6 max-w-xl font-sans leading-relaxed text-wood-600">{book.synopsis}</p>
+            <div className="mb-10">
+              <div className="eyebrow mb-3">Sinopse</div>
+              <div className="prose prose-sm max-w-none text-cafe/80 leading-relaxed">
+                {book.synopsis.split('\n').map((p, i) => (
+                  <p key={i} className="mb-3 text-pretty">{p}</p>
+                ))}
+              </div>
+            </div>
           )}
 
-          <dl className="mt-6 grid max-w-md grid-cols-2 gap-x-6 gap-y-2 border-t border-dashed border-wood-200 pt-5 font-sans text-sm">
-            {book.publisher && (
-              <>
-                <dt className="text-wood-400">Editora</dt>
-                <dd className="text-wood-700">{book.publisher}</dd>
-              </>
-            )}
-            {book.published_year && (
-              <>
-                <dt className="text-wood-400">Ano</dt>
-                <dd className="text-wood-700">{book.published_year}</dd>
-              </>
-            )}
-            {book.isbn && (
-              <>
-                <dt className="text-wood-400">ISBN</dt>
-                <dd className="text-wood-700">{book.isbn}</dd>
-              </>
-            )}
-            <dt className="text-wood-400">Idioma</dt>
-            <dd className="text-wood-700">{book.language ?? 'pt-BR'}</dd>
-          </dl>
+          {/* Disponibilidade & CTA */}
+          <div className="ficha bg-pergaminho-dark/30">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <div className="eyebrow mb-1">Disponibilidade</div>
+                <div className={`font-mono text-2xl tabular-nums ${isAvailable ? 'text-musgo' : 'text-terracota'}`}>
+                  {isAvailable
+                    ? `${book.available_copies} de ${book.total_copies}`
+                    : 'Todos emprestados'}
+                </div>
+                <div className="text-xs text-sepia mt-1">
+                  {isAvailable
+                    ? `${book.available_copies} exemplar${book.available_copies > 1 ? 'es' : ''} disponíve${book.available_copies > 1 ? 'is' : 'l'} para retirada`
+                    : 'Aguarde a devolução — deixe o e-mail e avisamos'}
+                </div>
+              </div>
+            </div>
 
-          {lastError && (
-            <p className="mt-4 font-sans text-sm font-medium text-terracotta-600">{lastError}</p>
-          )}
+            <div className="rule-double mb-4" />
 
-          <div className="mt-8">
             <Button
-              variant={inCart ? 'ghost' : 'primary'}
-              size="lg"
-              disabled={addDisabled}
-              onClick={handleToggleCart}
-              title={
-                !isAvailable
-                  ? 'Sem cópias disponíveis'
-                  : addDisabled
-                  ? 'Sacola cheia (máx. 3)'
-                  : undefined
-              }
+              onClick={() => addBook(book)}
+              disabled={!isAvailable || inCart}
+              className="w-full"
             >
-              {!isAvailable
-                ? 'Sem cópias disponíveis'
-                : inCart
-                ? 'Remover da sacola'
-                : 'Adicionar à sacola'}
+              {inCart
+                ? '✓ Já está na sua sacola'
+                : isAvailable
+                  ? 'Adicionar à sacola de leitura'
+                  : 'Indisponível'}
             </Button>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
-  );
+  )
 }

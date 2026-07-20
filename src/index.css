@@ -3,33 +3,204 @@
 @tailwind utilities;
 
 @layer base {
-  h1, h2, h3, h4, h5, h6 {
-    @apply font-serif text-wood-800;
+  :root {
+    --color-pergaminho: 249 246 240;
+    --color-cafe: 62 39 35;
+    --color-musgo: 90 110 74;
+    --color-terracota: 184 92 62;
+    --color-sepia: 139 111 71;
   }
 
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-pergaminho text-cafe font-body;
+    font-feature-settings: 'ss01', 'cv11';
+    background-image:
+      radial-gradient(at 20% 10%, rgba(139, 111, 71, 0.04) 0px, transparent 50%),
+      radial-gradient(at 80% 80%, rgba(90, 110, 74, 0.03) 0px, transparent 50%);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display text-cafe;
+  }
+
+  /* Selection */
   ::selection {
-    @apply bg-moss-200 text-wood-900;
+    background: rgb(var(--color-musgo) / 0.25);
+    color: rgb(var(--color-cafe));
+  }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  ::-webkit-scrollbar-track {
+    background: rgb(var(--color-pergaminho));
+  }
+  ::-webkit-scrollbar-thumb {
+    background: rgb(var(--color-sepia) / 0.3);
+    border-radius: 6px;
+    border: 2px solid rgb(var(--color-pergaminho));
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: rgb(var(--color-sepia) / 0.6);
+  }
+
+  /* Focus visible */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-musgo ring-offset-2 ring-offset-pergaminho;
+    border-radius: 2px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after {
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 }
 
 @layer components {
-  /* Botão principal — estilo "carimbo de biblioteca" */
+  /* Eyebrow — pequeno label em small caps para categorias/seções */
+  .eyebrow {
+    @apply font-mono text-eyebrow uppercase text-sepia tracking-[0.25em];
+  }
+
+  /* Divisor de biblioteca — linha dupla fina */
+  .rule-double {
+    @apply relative h-[3px] w-full;
+    background: linear-gradient(
+      to bottom,
+      rgb(var(--color-sepia) / 0.3) 0,
+      rgb(var(--color-sepia) / 0.3) 1px,
+      transparent 1px,
+      transparent 2px,
+      rgb(var(--color-sepia) / 0.3) 2px,
+      rgb(var(--color-sepia) / 0.3) 3px
+    );
+  }
+
+  /* Ficha catalográfica — usada em cards e detalhes */
+  .ficha {
+    @apply bg-pergaminho border border-sepia/20 p-4 relative;
+    box-shadow:
+      0 1px 2px rgba(62, 39, 35, 0.04),
+      inset 0 0 0 1px rgba(249, 246, 240, 0.5);
+  }
+
+  .ficha::before {
+    content: '';
+    @apply absolute left-3 right-3 top-2 h-px bg-sepia/20;
+  }
+
+  /* Card de livro — a personalidade principal */
+  .book-card {
+    @apply relative bg-pergaminho transition-all duration-500 ease-out;
+    transform: translateY(0);
+    box-shadow:
+      0 1px 2px rgba(62, 39, 35, 0.08),
+      0 4px 12px rgba(62, 39, 35, 0.04);
+  }
+
+  .book-card:hover {
+    transform: translateY(-6px);
+    box-shadow:
+      0 8px 16px rgba(62, 39, 35, 0.10),
+      0 20px 40px rgba(62, 39, 35, 0.12);
+  }
+
+  /* Carimbo — para tags como "Novo", "Atrasado", etc */
+  .carimbo {
+    @apply inline-flex items-center gap-1 px-3 py-1 font-mono text-[10px] uppercase tracking-widest border-2;
+    transform: rotate(-2deg);
+    letter-spacing: 0.2em;
+  }
+
+  .carimbo-musgo {
+    @apply border-musgo text-musgo bg-musgo/5;
+  }
+  .carimbo-terracota {
+    @apply border-terracota text-terracota bg-terracota/5;
+  }
+  .carimbo-sepia {
+    @apply border-sepia text-sepia bg-sepia/5;
+  }
+
+  /* Botões */
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 font-medium text-sm transition-all duration-200 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-sm bg-moss-600 px-5 py-2.5
-           font-sans text-sm font-semibold text-parchment shadow-shelf
-           transition-colors hover:bg-moss-700 focus-visible:outline
-           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-moss-500;
+    @apply btn bg-musgo text-pergaminho hover:bg-musgo-dark;
   }
 
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-sm border border-wood-400 bg-transparent px-5 py-2.5
-           font-sans text-sm font-semibold text-wood-700
-           transition-colors hover:bg-wood-100 focus-visible:outline
-           focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-wood-400;
+    @apply btn bg-transparent text-cafe border border-cafe/20 hover:border-cafe hover:bg-cafe/5;
   }
 
-  /* Card estilo "capa de livro / ficha de catálogo" */
-  .card-shelf {
-    @apply rounded-sm border border-wood-200 bg-parchment-light shadow-shelf;
+  .btn-terracota {
+    @apply btn bg-terracota text-pergaminho hover:bg-terracota-dark;
+  }
+
+  .btn-ghost {
+    @apply btn bg-transparent text-cafe hover:bg-cafe/5;
+  }
+
+  /* Input */
+  .input {
+    @apply w-full bg-transparent border-b border-sepia/30 py-2 px-1 text-cafe placeholder:text-sepia/60 focus:border-cafe focus:outline-none transition-colors;
+  }
+
+  .input-boxed {
+    @apply w-full bg-pergaminho-dark/50 border border-sepia/20 px-4 py-3 text-cafe placeholder:text-sepia/60 focus:border-cafe focus:bg-pergaminho focus:outline-none transition-all;
+  }
+
+  /* Data em estilo de datador */
+  .datador {
+    @apply font-mono text-xs tracking-wider uppercase text-cafe/70 tabular-nums;
+  }
+
+  /* Ornamento tipográfico — separador entre seções */
+  .ornament::before,
+  .ornament::after {
+    content: '§';
+    @apply inline-block mx-3 text-sepia/40;
+  }
+
+  /* Container padrão */
+  .container-book {
+    @apply mx-auto max-w-7xl px-6 lg:px-10;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+
+  .grain {
+    position: relative;
+  }
+
+  .grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' /%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.15'/%3E%3C/svg%3E");
+    opacity: 0.3;
+    pointer-events: none;
+    mix-blend-mode: multiply;
   }
 }

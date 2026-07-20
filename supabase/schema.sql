@@ -1,266 +1,209 @@
--- =====================================================================
--- ESTANTE LIVRE — Schema inicial (Fase 1)
--- Plataforma de aluguel de livros
--- =====================================================================
+-- ═══════════════════════════════════════════════════════════════════
+-- ESTANDE LIVRE — Schema completo
+-- Postgres/Supabase
+-- ═══════════════════════════════════════════════════════════════════
 
--- ---------------------------------------------------------------------
--- Extensões necessárias
--- ---------------------------------------------------------------------
+-- Extensões
 create extension if not exists "uuid-ossp";
+create extension if not exists "pgcrypto";
 
--- ---------------------------------------------------------------------
--- 1. USERS
--- Estende auth.users do Supabase com dados de perfil da locadora.
--- ---------------------------------------------------------------------
-create table if not exists public.users (
-  id uuid primary key references auth.users (id) on delete cascade,
+-- ── Enums ──────────────────────────────────────────────────────────
+create type user_role as enum ('user', 'admin');
+create type rental_status as enum ('active', 'returned', 'damaged', 'lost');
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Tabela: profiles
+-- Estende auth.users do Supabase com dados públicos do leitor
+-- ═══════════════════════════════════════════════════════════════════
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  email text unique not null,
   full_name text not null,
-  email text not null unique,
   phone text,
-  avatar_url text,
-  role text not null default 'customer' check (role in ('customer', 'admin')),
-  active_rentals_count integer not null default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  role user_role default 'user' not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
 );
 
-comment on table public.users is 'Perfis de usuários (clientes e administradores) da Estante Livre';
+create index idx_profiles_role on public.profiles(role);
+create index idx_profiles_email on public.profiles(email);
 
--- ---------------------------------------------------------------------
--- 2. CATEGORIES
--- ---------------------------------------------------------------------
+-- Trigger: cria profile automaticamente após signup
+create or replace function public.handle_new_user()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.profiles (id, email, full_name, phone)
+  values (
+    new.id,
+    new.email,
+    coalesce(new.raw_user_meta_data->>'full_name', 'Leitor'),
+    new.raw_user_meta_data->>'phone'
+  );
+  return new;
+end;
+$$;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Tabela: categories
+-- ═══════════════════════════════════════════════════════════════════
 create table if not exists public.categories (
   id uuid primary key default uuid_generate_v4(),
-  name text not null unique,
-  slug text not null unique,
+  name text unique not null,
+  slug text unique not null,
   description text,
-  created_at timestamptz not null default now()
+  created_at timestamptz default now() not null
 );
 
-comment on table public.categories is 'Categorias/gêneros literários dos livros';
-
--- ---------------------------------------------------------------------
--- 3. BOOKS
--- Controle de acervo com cópias totais x disponíveis.
--- ---------------------------------------------------------------------
+-- ═══════════════════════════════════════════════════════════════════
+-- Tabela: books
+-- ═══════════════════════════════════════════════════════════════════
 create table if not exists public.books (
   id uuid primary key default uuid_generate_v4(),
   title text not null,
+  slug text unique not null,
   author text not null,
-  isbn text unique,
   synopsis text,
-  cover_url text,
-  category_id uuid references public.categories (id) on delete set null,
   publisher text,
-  published_year integer,
-  language text default 'pt-BR',
-  total_copies integer not null default 1 check (total_copies >= 0),
-  available_copies integer not null default 1 check (available_copies >= 0),
-  daily_rental_price numeric(10, 2) not null default 0 check (daily_rental_price >= 0),
-  is_active boolean not null default true,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
+  year integer,
+  pages integer,
+  language text default 'Português',
+  category_id uuid references public.categories(id) on delete set null,
+  cover_url text,
+  isbn text,
+  catalog_number text,
+  total_copies integer default 1 not null check (total_copies >= 0),
+  available_copies integer default 1 not null check (available_copies >= 0),
+  featured boolean default false not null,
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null,
 
-  constraint available_lte_total check (available_copies <= total_copies)
+  constraint available_le_total check (available_copies <= total_copies)
 );
 
-comment on table public.books is 'Acervo de livros disponíveis para aluguel';
-create index if not exists idx_books_category on public.books (category_id);
-create index if not exists idx_books_title on public.books using gin (to_tsvector('portuguese', title));
-
--- ---------------------------------------------------------------------
--- 4. RENTALS
--- Empréstimos com data prevista de devolução e devolução efetiva.
--- ---------------------------------------------------------------------
-create table if not exists public.rentals (
-  id uuid primary key default uuid_generate_v4(),
-  user_id uuid not null references public.users (id) on delete cascade,
-  book_id uuid not null references public.books (id) on delete restrict,
-  rented_at timestamptz not null default now(),
-  due_date date not null,
-  returned_at timestamptz,
-  status text not null default 'active' check (status in ('active', 'returned', 'overdue', 'cancelled')),
-  total_price numeric(10, 2) not null default 0 check (total_price >= 0),
-  late_fee numeric(10, 2) not null default 0 check (late_fee >= 0),
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+create index idx_books_slug on public.books(slug);
+create index idx_books_category on public.books(category_id);
+create index idx_books_featured on public.books(featured) where featured = true;
+create index idx_books_search on public.books using gin (
+  to_tsvector('portuguese', title || ' ' || author || ' ' || coalesce(synopsis, ''))
 );
 
-comment on table public.rentals is 'Histórico e controle de empréstimos de livros';
-create index if not exists idx_rentals_user on public.rentals (user_id);
-create index if not exists idx_rentals_book on public.rentals (book_id);
-create index if not exists idx_rentals_status on public.rentals (status);
-
--- ---------------------------------------------------------------------
--- TRIGGERS: updated_at automático
--- ---------------------------------------------------------------------
-create or replace function public.set_updated_at()
-returns trigger as $$
+-- Slugify automático se vier vazio
+create or replace function public.books_generate_slug()
+returns trigger
+language plpgsql
+as $$
 begin
+  if new.slug is null or new.slug = '' then
+    new.slug = lower(regexp_replace(
+      translate(new.title, 'ÁÀÂÃÄÉÈÊËÍÌÎÏÓÒÔÕÖÚÙÛÜÇáàâãäéèêëíìîïóòôõöúùûüç', 'AAAAAEEEEIIIIOOOOOUUUUCaaaaaeeeeiiiiooooouuuuc'),
+      '[^a-z0-9]+', '-', 'g'
+    ));
+  end if;
   new.updated_at = now();
   return new;
 end;
-$$ language plpgsql;
+$$;
 
-create trigger trg_users_updated_at before update on public.users
+drop trigger if exists trg_books_slug on public.books;
+create trigger trg_books_slug
+  before insert or update on public.books
+  for each row execute function public.books_generate_slug();
+
+-- ═══════════════════════════════════════════════════════════════════
+-- Tabela: rentals
+-- O coração transacional
+-- ═══════════════════════════════════════════════════════════════════
+create table if not exists public.rentals (
+  id uuid primary key default uuid_generate_v4(),
+  user_id uuid not null references public.profiles(id) on delete restrict,
+  book_id uuid not null references public.books(id) on delete restrict,
+
+  -- Datas
+  rented_at timestamptz default now() not null,
+  due_date timestamptz not null,
+  returned_at timestamptz,
+
+  -- Status e regras
+  status rental_status default 'active' not null,
+  daily_fine_rate numeric(10, 2) default 2.00 not null,
+  late_fee numeric(10, 2) default 0 not null,
+  damage_fee numeric(10, 2) default 0 not null,
+
+  -- Termos e observações
+  terms_accepted_at timestamptz default now() not null,
+  notes text,
+
+  created_at timestamptz default now() not null,
+  updated_at timestamptz default now() not null
+);
+
+create index idx_rentals_user on public.rentals(user_id);
+create index idx_rentals_book on public.rentals(book_id);
+create index idx_rentals_status on public.rentals(status);
+create index idx_rentals_due_date on public.rentals(due_date) where status = 'active';
+
+-- Trigger de updated_at
+create or replace function public.set_updated_at()
+returns trigger language plpgsql as $$
+begin new.updated_at = now(); return new; end;
+$$;
+
+drop trigger if exists trg_rentals_updated on public.rentals;
+create trigger trg_rentals_updated
+  before update on public.rentals
   for each row execute function public.set_updated_at();
 
-create trigger trg_books_updated_at before update on public.books
-  for each row execute function public.set_updated_at();
+-- ═══════════════════════════════════════════════════════════════════
+-- Funções auxiliares (RPCs)
+-- ═══════════════════════════════════════════════════════════════════
 
-create trigger trg_rentals_updated_at before update on public.rentals
-  for each row execute function public.set_updated_at();
-
--- ---------------------------------------------------------------------
--- TRIGGER: ajustar available_copies ao criar/devolver aluguel
--- ---------------------------------------------------------------------
-create or replace function public.handle_rental_insert()
-returns trigger as $$
+-- Decrementar cópias disponíveis (usado no checkout)
+create or replace function public.decrement_available_copies(book_id_input uuid)
+returns void
+language plpgsql
+security definer
+as $$
 begin
   update public.books
-    set available_copies = available_copies - 1
-    where id = new.book_id and available_copies > 0;
-
-  if not found then
-    raise exception 'Não há cópias disponíveis para este livro';
-  end if;
-
-  update public.users
-    set active_rentals_count = active_rentals_count + 1
-    where id = new.user_id;
-
-  return new;
+  set available_copies = available_copies - 1
+  where id = book_id_input and available_copies > 0;
 end;
-$$ language plpgsql;
+$$;
 
-create trigger trg_rental_insert
-  after insert on public.rentals
-  for each row execute function public.handle_rental_insert();
-
-create or replace function public.handle_rental_return()
-returns trigger as $$
+-- Incrementar cópias disponíveis (usado na devolução)
+create or replace function public.increment_available_copies(book_id_input uuid)
+returns void
+language plpgsql
+security definer
+as $$
 begin
-  if old.status = 'active' and new.status = 'returned' then
-    update public.books
-      set available_copies = available_copies + 1
-      where id = new.book_id;
-
-    update public.users
-      set active_rentals_count = greatest(active_rentals_count - 1, 0)
-      where id = new.user_id;
-  end if;
-
-  return new;
+  update public.books
+  set available_copies = available_copies + 1
+  where id = book_id_input and available_copies < total_copies;
 end;
-$$ language plpgsql;
+$$;
 
-create trigger trg_rental_return
-  after update on public.rentals
-  for each row execute function public.handle_rental_return();
+-- View de aluguéis atrasados
+create or replace view public.late_rentals_view as
+select
+  r.*,
+  extract(day from (now() - r.due_date))::int as days_late,
+  round(extract(day from (now() - r.due_date))::numeric * r.daily_fine_rate, 2) as accumulated_fine
+from public.rentals r
+where r.status = 'active'
+  and r.due_date < now();
 
--- =====================================================================
--- ROW LEVEL SECURITY (RLS)
--- =====================================================================
-
-alter table public.users enable row level security;
-alter table public.categories enable row level security;
-alter table public.books enable row level security;
-alter table public.rentals enable row level security;
-
--- Função helper: verifica se o usuário logado é admin
-create or replace function public.is_admin()
-returns boolean as $$
-  select exists (
-    select 1 from public.users
-    where id = auth.uid() and role = 'admin'
-  );
-$$ language sql stable security definer;
-
--- ---------------------------------------------------------------------
--- USERS: usuário vê/edita o próprio perfil; admin vê/edita tudo
--- ---------------------------------------------------------------------
-create policy "users_select_own_or_admin"
-  on public.users for select
-  using (auth.uid() = id or public.is_admin());
-
-create policy "users_update_own_or_admin"
-  on public.users for update
-  using (auth.uid() = id or public.is_admin());
-
-create policy "users_insert_self"
-  on public.users for insert
-  with check (auth.uid() = id);
-
-create policy "users_delete_admin_only"
-  on public.users for delete
-  using (public.is_admin());
-
--- ---------------------------------------------------------------------
--- CATEGORIES: leitura pública, escrita apenas admin
--- ---------------------------------------------------------------------
-create policy "categories_select_public"
-  on public.categories for select
-  using (true);
-
-create policy "categories_write_admin_only"
-  on public.categories for insert
-  with check (public.is_admin());
-
-create policy "categories_update_admin_only"
-  on public.categories for update
-  using (public.is_admin());
-
-create policy "categories_delete_admin_only"
-  on public.categories for delete
-  using (public.is_admin());
-
--- ---------------------------------------------------------------------
--- BOOKS: leitura pública, escrita apenas admin
--- ---------------------------------------------------------------------
-create policy "books_select_public"
-  on public.books for select
-  using (true);
-
-create policy "books_insert_admin_only"
-  on public.books for insert
-  with check (public.is_admin());
-
-create policy "books_update_admin_only"
-  on public.books for update
-  using (public.is_admin());
-
-create policy "books_delete_admin_only"
-  on public.books for delete
-  using (public.is_admin());
-
--- ---------------------------------------------------------------------
--- RENTALS: usuário vê/cria os próprios aluguéis; admin vê/gerencia tudo
--- ---------------------------------------------------------------------
-create policy "rentals_select_own_or_admin"
-  on public.rentals for select
-  using (auth.uid() = user_id or public.is_admin());
-
-create policy "rentals_insert_own_or_admin"
-  on public.rentals for insert
-  with check (auth.uid() = user_id or public.is_admin());
-
-create policy "rentals_update_own_or_admin"
-  on public.rentals for update
-  using (auth.uid() = user_id or public.is_admin());
-
-create policy "rentals_delete_admin_only"
-  on public.rentals for delete
-  using (public.is_admin());
-
--- =====================================================================
--- SEED básico de categorias (opcional, útil para desenvolvimento)
--- =====================================================================
-insert into public.categories (name, slug, description) values
-  ('Romance', 'romance', 'Histórias de amor e relações humanas'),
-  ('Ficção Científica', 'ficcao-cientifica', 'Futuro, tecnologia e especulação'),
-  ('Clássicos', 'classicos', 'Obras consagradas da literatura'),
-  ('Fantasia', 'fantasia', 'Mundos e criaturas imaginárias'),
-  ('Biografias', 'biografias', 'Histórias de vidas reais'),
-  ('História', 'historia', 'Fatos e narrativas históricas')
-on conflict (slug) do nothing;
+-- ═══════════════════════════════════════════════════════════════════
+-- Storage buckets
+-- ═══════════════════════════════════════════════════════════════════
+insert into storage.buckets (id, name, public)
+values ('book-covers', 'book-covers', true)
+on conflict (id) do nothing;

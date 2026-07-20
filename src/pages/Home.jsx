@@ -1,202 +1,188 @@
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import BookCard from '../components/books/BookCard';
-import Button from '../components/ui/Button';
-import { useCartStore } from '../store/useCartStore';
-import { listBooks } from '../services/books.service';
+import { Link } from 'react-router-dom'
+import { motion } from 'framer-motion'
+import { ArrowRight, BookOpen, Clock, Shield } from 'lucide-react'
+import { useFeaturedBooks, useNewArrivals, useCategories } from '@/hooks/useBooks'
+import BookGrid from '@/components/books/BookGrid'
+import Button from '@/components/ui/Button'
+import { RENTAL_CONFIG } from '@/lib/utils'
 
-export default function Home({ searchTerm = '' }) {
-  const navigate = useNavigate();
-  const [books, setBooks] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-
-  const items = useCartStore((state) => state.items);
-  const addItem = useCartStore((state) => state.addItem);
-  const removeItem = useCartStore((state) => state.removeItem);
-  const lastError = useCartStore((state) => state.lastError);
-
-  const cartIds = useMemo(() => new Set(items.map((item) => item.id)), [items]);
-  const isCartFull = items.length >= 3;
-
-  useEffect(() => {
-    let isMounted = true;
-    setIsLoading(true);
-    setLoadError(null);
-
-    listBooks()
-      .then((data) => {
-        if (isMounted) setBooks(data);
-      })
-      .catch((err) => {
-        if (isMounted) setLoadError(err.message ?? 'Não foi possível carregar o catálogo.');
-      })
-      .finally(() => {
-        if (isMounted) setIsLoading(false);
-      });
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
-
-  const filteredBooks = useMemo(() => {
-    const term = searchTerm.trim().toLowerCase();
-    if (!term) return books;
-    return books.filter(
-      (book) =>
-        book.title.toLowerCase().includes(term) || book.author.toLowerCase().includes(term)
-    );
-  }, [books, searchTerm]);
-
-  const handleAddToCart = (book) => {
-    if (cartIds.has(book.id)) {
-      removeItem(book.id);
-      return;
-    }
-    addItem(book);
-  };
+export default function Home() {
+  const { data: featured = [], isLoading: loadingFeatured } = useFeaturedBooks()
+  const { data: recent = [], isLoading: loadingRecent } = useNewArrivals()
+  const { data: categories = [] } = useCategories()
 
   return (
     <>
       {/* Hero */}
-      <section className="relative overflow-hidden border-b border-wood-200/60 bg-gradient-to-b from-wood-100/60 via-parchment to-parchment">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-[0.06]"
-          style={{
-            backgroundImage:
-              'repeating-linear-gradient(90deg, #2C1D11 0, #2C1D11 2px, transparent 2px, transparent 42px)',
-          }}
-        />
-
-        <div className="relative mx-auto flex max-w-6xl flex-col items-center gap-6 px-6 py-24 text-center md:px-12 md:py-32">
-          <span className="rounded-full border border-moss-300/60 bg-moss-50 px-4 py-1.5 font-sans text-xs font-semibold uppercase tracking-[0.2em] text-moss-700">
-            Sua próxima leitura te espera
-          </span>
-
-          <h1 className="max-w-2xl text-4xl font-bold leading-tight text-wood-800 md:text-6xl">
-            Uma biblioteca inteira,
-            <br />
-            <span className="text-moss-700">à sua porta.</span>
-          </h1>
-
-          <p className="max-w-lg font-sans text-base leading-relaxed text-wood-500 md:text-lg">
-            Alugue os livros que você sempre quis ler, sem compromisso de comprar a estante
-            inteira. Reserve online, retire na loja e devolva quando terminar.
-          </p>
-
-          <div className="mt-2 flex flex-wrap items-center justify-center gap-4">
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() =>
-                document.getElementById('catalogo')?.scrollIntoView({ behavior: 'smooth' })
-              }
+      <section className="container-book pt-16 pb-24 md:pt-24 md:pb-32">
+        <div className="grid md:grid-cols-12 gap-10 items-end">
+          <div className="md:col-span-8">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
             >
-              Explorar catálogo
-            </Button>
-            <Button
-              variant="ghost"
-              size="lg"
-              onClick={() =>
-                document.getElementById('como-funciona')?.scrollIntoView({ behavior: 'smooth' })
-              }
+              <div className="eyebrow mb-6">Locadora de livros · fundada em 2026</div>
+              <h1 className="font-display text-display-lg md:text-display-xl text-balance leading-[1.02]">
+                Uma estante inteira,
+                <br />
+                <span className="italic text-musgo">à sua espera.</span>
+              </h1>
+              <p className="mt-8 text-lg text-cafe/70 max-w-xl text-pretty">
+                Escolha até {RENTAL_CONFIG.maxBooksPerRental} livros por vez, leia com calma por
+                {' '}{RENTAL_CONFIG.rentalDays} dias, devolva quando terminar. Sem pressa, sem estoque em casa.
+              </p>
+              <div className="mt-10 flex flex-wrap gap-3">
+                <Link to="/acervo">
+                  <Button size="lg">
+                    Explorar acervo <ArrowRight className="w-4 h-4" />
+                  </Button>
+                </Link>
+                <Link to="/cadastrar">
+                  <Button variant="secondary" size="lg">
+                    Criar cadastro
+                  </Button>
+                </Link>
+              </div>
+            </motion.div>
+          </div>
+
+          {/* Ficha lateral — signature element */}
+          <div className="md:col-span-4">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.7, delay: 0.3, ease: [0.16, 1, 0.3, 1] }}
+              className="ficha space-y-3"
             >
-              Como funciona
-            </Button>
+              <div className="eyebrow">Ficha da locadora</div>
+              <div className="rule-double" />
+              <dl className="space-y-2 text-sm font-mono">
+                <div className="flex justify-between">
+                  <dt className="text-sepia">Prazo padrão</dt>
+                  <dd className="tabular-nums">{RENTAL_CONFIG.rentalDays} dias</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sepia">Livros/locação</dt>
+                  <dd className="tabular-nums">até {RENTAL_CONFIG.maxBooksPerRental}</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sepia">Multa por atraso</dt>
+                  <dd className="tabular-nums">R$ {RENTAL_CONFIG.dailyFine.toFixed(2).replace('.', ',')}/dia</dd>
+                </div>
+                <div className="flex justify-between">
+                  <dt className="text-sepia">Retirada</dt>
+                  <dd>presencial</dd>
+                </div>
+              </dl>
+              <div className="rule-double" />
+              <div className="text-[10px] text-sepia/70 pt-1 leading-relaxed">
+                Todo aluguel é firmado por termo digital, com aceite registrado no ato do checkout.
+              </div>
+            </motion.div>
           </div>
         </div>
       </section>
 
       {/* Como funciona */}
-      <section id="como-funciona" className="border-b border-wood-200/60 bg-parchment-light">
-        <div className="mx-auto max-w-5xl px-6 py-16 md:px-12">
-          <h2 className="mb-10 text-center text-3xl font-bold text-wood-800">Como funciona</h2>
-
-          <div className="grid gap-8 sm:grid-cols-3">
-            {[
-              {
-                step: '1',
-                title: 'Reserve online',
-                text: 'Escolha até 3 livros e monte sua sacola de leitura — sem pagar nada ainda.',
-              },
-              {
-                step: '2',
-                title: 'Retire e pague no balcão',
-                text: 'Venha buscar os livros na loja. O pagamento é feito na hora, em dinheiro, débito ou crédito.',
-              },
-              {
-                step: '3',
-                title: 'Leia e devolva em 14 dias',
-                text: 'Aproveite a leitura com calma e devolva dentro do prazo para não pagar multa.',
-              },
-            ].map((item) => (
-              <div key={item.step} className="text-center">
-                <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-moss-100 font-serif text-xl font-bold text-moss-700">
-                  {item.step}
-                </div>
-                <h3 className="mb-2 font-serif text-lg font-semibold text-wood-800">{item.title}</h3>
-                <p className="font-sans text-sm leading-relaxed text-wood-500">{item.text}</p>
+      <section className="border-y border-sepia/15 bg-pergaminho-dark/20">
+        <div className="container-book py-16 grid md:grid-cols-3 gap-10">
+          {[
+            {
+              icon: BookOpen,
+              step: '01',
+              title: 'Escolha',
+              text: `Navegue pelo acervo e adicione até ${RENTAL_CONFIG.maxBooksPerRental} títulos à sua sacola de leitura.`,
+            },
+            {
+              icon: Shield,
+              step: '02',
+              title: 'Assine o termo',
+              text: 'No checkout, você aceita o termo de locação — as regras do contrato, todas em uma tela.',
+            },
+            {
+              icon: Clock,
+              step: '03',
+              title: 'Leia com calma',
+              text: `Tem ${RENTAL_CONFIG.rentalDays} dias para devolver. Passou disso, multa diária começa a correr.`,
+            },
+          ].map((item) => (
+            <div key={item.step}>
+              <div className="flex items-baseline gap-3 mb-4">
+                <span className="font-mono text-xs text-sepia tracking-widest">{item.step}</span>
+                <div className="flex-1 h-px bg-sepia/20" />
+                <item.icon className="w-4 h-4 text-sepia" />
               </div>
-            ))}
-          </div>
+              <h3 className="font-display text-2xl mb-3">{item.title}</h3>
+              <p className="text-sm text-cafe/70 text-pretty">{item.text}</p>
+            </div>
+          ))}
         </div>
       </section>
 
-      {/* Catálogo */}
-      <section id="catalogo" className="mx-auto max-w-6xl px-6 py-16 md:px-12 md:py-20">
-        <div className="mb-10 flex flex-col gap-2">
-          <h2 className="text-3xl font-bold text-wood-800">
-            {searchTerm ? `Resultados para "${searchTerm}"` : 'Recém-chegados à estante'}
-          </h2>
-          <p className="font-sans text-wood-500">
-            Escolha até 3 livros para sua sacola de leitura.
-          </p>
-          {lastError && (
-            <p className="font-sans text-sm font-medium text-terracotta-600">{lastError}</p>
-          )}
+      {/* Destaques */}
+      <section className="container-book py-20">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <div className="eyebrow mb-2">Destaques da estante</div>
+            <h2 className="font-display text-display-md">Escolhas do bibliotecário</h2>
+          </div>
+          <Link
+            to="/acervo"
+            className="hidden md:inline-flex items-center gap-1 text-sm text-cafe hover:text-musgo transition-colors"
+          >
+            Ver acervo completo <ArrowRight className="w-3.5 h-3.5" />
+          </Link>
         </div>
-
-        {isLoading && (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div
-                key={i}
-                className="aspect-[2/3] animate-pulse rounded-md bg-wood-100"
-                aria-hidden="true"
-              />
-            ))}
-          </div>
-        )}
-
-        {!isLoading && loadError && (
-          <p className="py-12 text-center font-sans text-sm font-medium text-terracotta-600">
-            {loadError}
-          </p>
-        )}
-
-        {!isLoading && !loadError && filteredBooks.length === 0 && (
-          <p className="py-12 text-center font-serif text-lg italic text-wood-500">
-            Nenhum livro encontrado com esse termo.
-          </p>
-        )}
-
-        {!isLoading && !loadError && filteredBooks.length > 0 && (
-          <div className="grid grid-cols-2 gap-6 sm:grid-cols-3 lg:grid-cols-4">
-            {filteredBooks.map((book) => (
-              <BookCard
-                key={book.id}
-                book={book}
-                inCart={cartIds.has(book.id)}
-                cartFull={isCartFull}
-                onOpen={(b) => navigate(`/livro/${b.id}`)}
-                onAddToCart={handleAddToCart}
-              />
-            ))}
-          </div>
-        )}
+        <BookGrid books={featured} loading={loadingFeatured} />
       </section>
+
+      {/* Recém-chegados */}
+      <section className="container-book py-20 border-t border-sepia/15">
+        <div className="flex items-end justify-between mb-10">
+          <div>
+            <div className="eyebrow mb-2">Últimas semanas</div>
+            <h2 className="font-display text-display-md">Recém-chegados</h2>
+          </div>
+        </div>
+        <BookGrid
+          books={recent}
+          loading={loadingRecent}
+          isNewFn={(b) => {
+            const days = (Date.now() - new Date(b.created_at)) / (1000 * 60 * 60 * 24)
+            return days <= 14
+          }}
+        />
+      </section>
+
+      {/* Categorias */}
+      {categories.length > 0 && (
+        <section className="container-book py-20 border-t border-sepia/15">
+          <div className="eyebrow mb-2">Por seção</div>
+          <h2 className="font-display text-display-md mb-10">Categorias do acervo</h2>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {categories.map((c, i) => (
+              <Link
+                key={c.id}
+                to={`/acervo?categoria=${c.slug}`}
+                className="ficha hover:bg-pergaminho-dark/30 transition-colors group"
+              >
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="font-mono text-[10px] text-sepia mb-1">
+                      № {String(i + 1).padStart(3, '0')}
+                    </div>
+                    <div className="font-display text-lg text-cafe group-hover:text-musgo transition-colors">
+                      {c.name}
+                    </div>
+                  </div>
+                  <ArrowRight className="w-4 h-4 text-sepia group-hover:text-musgo group-hover:translate-x-1 transition-all" />
+                </div>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
     </>
-  );
+  )
 }
