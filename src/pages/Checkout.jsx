@@ -4,18 +4,20 @@ import { ArrowLeft, ShieldCheck, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { useCheckout } from '@/hooks/useRentals'
 import Button from '@/components/ui/Button'
-import { formatDatador, previewDueDate, RENTAL_CONFIG, formatMoney } from '@/lib/utils'
+import { formatDatador, previewDueDate, formatMoney } from '@/lib/utils'
 
 export default function Checkout() {
   const navigate = useNavigate()
   const { items, clear } = useCartStore()
   const { user, profile } = useAuthStore()
+  const { rentalDays, dailyFine, damageFee, lossFee } = useSettingsStore()
   const [accepted, setAccepted] = useState(false)
   const checkout = useCheckout()
 
-  const dueDate = previewDueDate()
+  const dueDate = previewDueDate(rentalDays)
 
   if (items.length === 0) {
     return (
@@ -35,7 +37,6 @@ export default function Checkout() {
     }
     try {
       await checkout.mutateAsync({
-        userId: user.id,
         bookIds: items.map((i) => i.book_id),
         termsAccepted: true,
       })
@@ -93,7 +94,7 @@ export default function Checkout() {
               <div>
                 <div className="eyebrow mb-2">Cláusula 2ª — Do prazo</div>
                 <p>
-                  O prazo de comodato é de <strong>{RENTAL_CONFIG.rentalDays} dias corridos</strong>,
+                  O prazo de comodato é de <strong>{rentalDays} dias corridos</strong>,
                   contados desta data. A data-limite fica então definida como{' '}
                   <strong className="font-mono">{formatDatador(dueDate)}</strong>.
                 </p>
@@ -112,10 +113,10 @@ export default function Checkout() {
                 <div className="eyebrow mb-2">Cláusula 4ª — Das penalidades</div>
                 <p>
                   Em caso de atraso, incidirá multa diária de{' '}
-                  <strong>{formatMoney(RENTAL_CONFIG.dailyFine)}</strong> por título, contada a partir do
+                  <strong>{formatMoney(dailyFine)}</strong> por título, contada a partir do
                   primeiro dia após o vencimento. Livros devolvidos com dano ficam sujeitos à taxa
-                  de reparo de {formatMoney(RENTAL_CONFIG.damageFee)}. Extravio implica reposição
-                  integral, no valor de {formatMoney(RENTAL_CONFIG.lossFee)}.
+                  de reparo de {formatMoney(damageFee)}. Extravio implica reposição
+                  integral, no valor de {formatMoney(lossFee)}.
                 </p>
               </div>
 

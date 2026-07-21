@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { BookMarked, Library, AlertTriangle, TrendingUp, ArrowRight } from 'lucide-react'
+import { BookMarked, Library, AlertTriangle, TrendingUp, ArrowRight, CircleDollarSign, PlusCircle } from 'lucide-react'
 import { useAdminStats, useAllRentals } from '@/hooks/useRentals'
 import { formatDatador, calculateFine, formatMoney } from '@/lib/utils'
 import { cn } from '@/lib/utils'
@@ -21,7 +21,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-12">
         <StatCard
           icon={BookMarked}
           label="Títulos no acervo"
@@ -39,6 +39,15 @@ export default function AdminDashboard() {
           value={stats?.lateRentals || 0}
           tone={stats?.lateRentals > 0 ? 'terracota' : 'sepia'}
         />
+        <Link to="/admin/emprestimos">
+          <StatCard
+            icon={CircleDollarSign}
+            label="Multas pendentes"
+            value={new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(stats?.pendingFines || 0)}
+            tone={stats?.pendingFines > 0 ? 'terracota' : 'sepia'}
+            small
+          />
+        </Link>
         <StatCard
           icon={TrendingUp}
           label="Total histórico"
@@ -66,7 +75,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-2">
             {lateRentals.map((r) => {
-              const fine = calculateFine(r.due_date)
+              const fine = calculateFine(r.due_date, new Date(), r.daily_fine_rate)
               return (
                 <div
                   key={r.id}
@@ -94,7 +103,12 @@ export default function AdminDashboard() {
       {/* Ações rápidas */}
       <section>
         <h2 className="font-display text-xl mb-4">Ações rápidas</h2>
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-4 gap-4">
+          <Link to="/admin/nova-locacao" className="ficha hover:bg-musgo/10 border-musgo/20 transition-colors group">
+            <PlusCircle className="w-5 h-5 text-musgo mb-3" />
+            <div className="font-display text-lg">Nova locação</div>
+            <p className="text-xs text-cafe/60 mt-1">Registrar locação no balcão</p>
+          </Link>
           <Link to="/admin/livros" className="ficha hover:bg-pergaminho-dark/30 transition-colors group">
             <BookMarked className="w-5 h-5 text-sepia mb-3 group-hover:text-musgo transition-colors" />
             <div className="font-display text-lg">Catalogar novo livro</div>
@@ -116,7 +130,7 @@ export default function AdminDashboard() {
   )
 }
 
-function StatCard({ icon: Icon, label, value, tone = 'cafe' }) {
+function StatCard({ icon: Icon, label, value, tone = 'cafe', small }) {
   const toneMap = {
     cafe: 'text-cafe',
     musgo: 'text-musgo',
@@ -124,12 +138,12 @@ function StatCard({ icon: Icon, label, value, tone = 'cafe' }) {
     sepia: 'text-sepia',
   }
   return (
-    <div className="ficha">
+    <div className="ficha h-full">
       <div className="flex items-center justify-between mb-2">
         <span className="eyebrow">{label}</span>
         <Icon className={cn('w-4 h-4 opacity-60', toneMap[tone])} />
       </div>
-      <div className={cn('font-display text-3xl tabular-nums', toneMap[tone])}>
+      <div className={cn('font-display tabular-nums', small ? 'text-xl' : 'text-3xl', toneMap[tone])}>
         {value}
       </div>
     </div>

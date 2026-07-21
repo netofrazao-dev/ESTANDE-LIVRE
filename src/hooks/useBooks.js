@@ -100,6 +100,44 @@ export const useCategories = () => {
   })
 }
 
+export const useSaveCategory = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (category) => {
+      if (category.id) {
+        const { data, error } = await supabase
+          .from('categories')
+          .update(category)
+          .eq('id', category.id)
+          .select()
+          .single()
+        if (error) throw error
+        return data
+      } else {
+        const { data, error } = await supabase
+          .from('categories')
+          .insert(category)
+          .select()
+          .single()
+        if (error) throw error
+        return data
+      }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  })
+}
+
+export const useDeleteCategory = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async (id) => {
+      const { error } = await supabase.from('categories').delete().eq('id', id)
+      if (error) throw error
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['categories'] }),
+  })
+}
+
 // Admin: CRUD
 export const useSaveBook = () => {
   const qc = useQueryClient()

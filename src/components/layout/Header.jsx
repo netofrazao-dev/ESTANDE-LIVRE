@@ -51,12 +51,12 @@ export default function Header() {
         <div className="flex items-center gap-2">
           {user ? (
             <div className="hidden md:flex items-center gap-3">
-              <div className="text-right">
+              <Link to="/minha-conta" className="text-right hover:opacity-70 transition-opacity">
                 <div className="text-xs text-cafe font-medium">
                   {profile?.full_name?.split(' ')[0] || 'Leitor'}
                 </div>
                 <div className="text-[10px] text-sepia">{profile?.email || user.email}</div>
-              </div>
+              </Link>
               <button
                 onClick={signOut}
                 className="p-2 text-cafe/60 hover:text-terracota transition-colors"
@@ -115,7 +115,12 @@ export default function Header() {
             )}
             <div className="pt-3 border-t border-sepia/15">
               {user ? (
-                <button onClick={signOut} className="text-sm text-terracota">Sair</button>
+                <div className="flex flex-col gap-3">
+                  <Link to="/minha-conta" className="text-sm text-cafe" onClick={() => setMobileOpen(false)}>
+                    Minha conta
+                  </Link>
+                  <button onClick={signOut} className="text-sm text-terracota text-left">Sair</button>
+                </div>
               ) : (
                 <Link to="/entrar" className="text-sm text-cafe" onClick={() => setMobileOpen(false)}>
                   Entrar

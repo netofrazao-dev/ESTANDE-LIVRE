@@ -1,16 +1,55 @@
-import { useParams, Link } from 'react-router-dom'
-import { ArrowLeft, BookOpen, Calendar, Hash, User } from 'lucide-react'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { ArrowLeft, BookOpen, Calendar, Hash, User, BellRing, Clock3 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { useBook } from '@/hooks/useBooks'
 import { useCartStore } from '@/stores/cartStore'
+import { useAuthStore } from '@/stores/authStore'
+import {
+  useWaitlistCount,
+  useMyReservations,
+  useCreateReservation,
+  useCancelReservation,
+} from '@/hooks/useReservations'
 import Button from '@/components/ui/Button'
 import Badge from '@/components/ui/Badge'
 import { motion } from 'framer-motion'
 
 export default function BookDetail() {
   const { slug } = useParams()
+  const navigate = useNavigate()
   const { data: book, isLoading, error } = useBook(slug)
   const addBook = useCartStore((s) => s.addBook)
   const cartItems = useCartStore((s) => s.items)
+  const user = useAuthStore((s) => s.user)
+
+  const { data: waitlistCount = 0 } = useWaitlistCount(book?.id)
+  const { data: myReservations = [] } = useMyReservations(user?.id)
+  const createReservation = useCreateReservation()
+  const cancelReservation = useCancelReservation()
+
+  const myReservation = myReservations.find((r) => r.book?.id === book?.id)
+
+  const handleReserve = async () => {
+    if (!user) {
+      navigate('/entrar', { state: { from: { pathname: `/livro/${slug}` } } })
+      return
+    }
+    try {
+      await createReservation.mutateAsync(book.id)
+      toast.success('Você entrou na fila. Avisamos por e-mail quando chegar sua vez.')
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível reservar.')
+    }
+  }
+
+  const handleCancelReservation = async () => {
+    try {
+      await cancelReservation.mutateAsync(myReservation.id)
+      toast.success('Reserva cancelada.')
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível cancelar.')
+    }
+  }
 
   if (isLoading) {
     return (
@@ -152,17 +191,48 @@ export default function BookDetail() {
 
             <div className="rule-double mb-4" />
 
-            <Button
-              onClick={() => addBook(book)}
-              disabled={!isAvailable || inCart}
-              className="w-full"
-            >
-              {inCart
-                ? '✓ Já está na sua sacola'
-                : isAvailable
-                  ? 'Adicionar à sacola de leitura'
-                  : 'Indisponível'}
-            </Button>
+            {isAvailable ? (
+              <Button
+                onClick={() => addBook(book)}
+                disabled={inCart}
+                className="w-full"
+              >
+                {inCart ? '✓ Já está na sua sacola' : 'Adicionar à sacola de leitura'}
+              </Button>
+            ) : myReservation ? (
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-musgo bg-musgo/10 px-3 py-2">
+                  <Clock3 className="w-4 h-4 flex-shrink-0" />
+                  {myReservation.status === 'notified'
+                    ? 'Chegou sua vez! Passe na loja para retirar.'
+                    : 'Você está na fila de espera deste título.'}
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleCancelReservation}
+                  loading={cancelReservation.isPending}
+                  className="w-full"
+                >
+                  Cancelar reserva
+                </Button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {waitlistCount > 0 && (
+                  <div className="text-xs text-sepia text-center">
+                    {waitlistCount} leitor{waitlistCount > 1 ? 'es' : ''} na fila à sua frente
+                  </div>
+                )}
+                <Button
+                  onClick={handleReserve}
+                  loading={createReservation.isPending}
+                  className="w-full"
+                >
+                  <BellRing className="w-4 h-4" />
+                  Avisar quando disponível
+                </Button>
+              </div>
+            )}
           </div>
         </motion.div>
       </div>

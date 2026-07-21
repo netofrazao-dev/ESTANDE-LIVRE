@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import { persist } from 'zustand/middleware'
-import { RENTAL_CONFIG } from '@/lib/utils'
+import { useSettingsStore } from './settingsStore'
 import toast from 'react-hot-toast'
 
 export const useCartStore = create(
@@ -15,14 +15,13 @@ export const useCartStore = create(
 
       addBook: (book) => {
         const items = get().items
+        const maxBooks = useSettingsStore.getState().maxBooksPerRental
         if (items.find((i) => i.book_id === book.id)) {
           toast.error('Este título já está na sua sacola.')
           return false
         }
-        if (items.length >= RENTAL_CONFIG.maxBooksPerRental) {
-          toast.error(
-            `Limite de ${RENTAL_CONFIG.maxBooksPerRental} livros por locação atingido.`,
-          )
+        if (items.length >= maxBooks) {
+          toast.error(`Limite de ${maxBooks} livros por locação atingido.`)
           return false
         }
         set({
@@ -49,7 +48,7 @@ export const useCartStore = create(
       clear: () => set({ items: [] }),
 
       count: () => get().items.length,
-      isFull: () => get().items.length >= RENTAL_CONFIG.maxBooksPerRental,
+      isFull: () => get().items.length >= useSettingsStore.getState().maxBooksPerRental,
     }),
     { name: 'estande-livre-cart' },
   ),

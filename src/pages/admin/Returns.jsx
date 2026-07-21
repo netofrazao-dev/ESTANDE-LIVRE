@@ -32,7 +32,7 @@ export default function AdminReturns() {
       ) : (
         <div className="space-y-3">
           {rentals.map((rental) => {
-            const fine = calculateFine(rental.due_date)
+            const fine = calculateFine(rental.due_date, new Date(), rental.daily_fine_rate)
             return (
               <div
                 key={rental.id}
@@ -91,12 +91,18 @@ function ReturnModal({ rental, onClose }) {
   const [notes, setNotes] = useState('')
   const returnBook = useReturnBook()
 
-  const fine = calculateFine(rental.due_date)
+  const fine = calculateFine(rental.due_date, new Date(), rental.daily_fine_rate)
+
+  // Usa as taxas CONGELADAS no momento do aceite do contrato (rental.damage_fee_rate /
+  // rental.loss_fee_rate), não os valores "ao vivo" de RENTAL_CONFIG — assim, mudanças
+  // futuras na taxa não afetam contratos já assinados.
+  const damageFeeRate = rental.damage_fee_rate ?? RENTAL_CONFIG.damageFee
+  const lossFeeRate = rental.loss_fee_rate ?? RENTAL_CONFIG.lossFee
 
   const feeMap = {
     ok: 0,
-    damaged: RENTAL_CONFIG.damageFee,
-    lost: RENTAL_CONFIG.lossFee,
+    damaged: damageFeeRate,
+    lost: lossFeeRate,
   }
   const fee = feeMap[condition]
   const total = fine.amount + fee
@@ -156,7 +162,7 @@ function ReturnModal({ rental, onClose }) {
               onSelect={setCondition}
               icon={AlertCircle}
               label="Com dano ou avaria"
-              description={`Taxa de reparo de ${formatMoney(RENTAL_CONFIG.damageFee)} é aplicada.`}
+              description={`Taxa de reparo de ${formatMoney(damageFeeRate)} é aplicada.`}
               tone="terracota"
             />
             <ConditionOption
@@ -165,7 +171,7 @@ function ReturnModal({ rental, onClose }) {
               onSelect={setCondition}
               icon={X}
               label="Extraviado ou inutilizado"
-              description={`Cobrança de reposição de ${formatMoney(RENTAL_CONFIG.lossFee)}. O livro sai do acervo.`}
+              description={`Cobrança de reposição de ${formatMoney(lossFeeRate)}. O livro sai do acervo.`}
               tone="terracota"
             />
           </div>

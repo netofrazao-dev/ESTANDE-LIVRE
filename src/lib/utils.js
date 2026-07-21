@@ -42,9 +42,13 @@ export const formatMoney = (value) =>
  * Calcula a multa acumulada até hoje para um aluguel em atraso.
  * @param {string|Date} dueDate — data limite de devolução
  * @param {string|Date} referenceDate — data de referência (default: hoje)
+ * @param {number} dailyRate — taxa diária a aplicar. IMPORTANTE: para
+ *   locações já existentes, sempre passe o valor congelado da própria
+ *   linha (`rental.daily_fine_rate`), não a configuração atual — senão
+ *   uma mudança de preço no admin passaria a valer retroativamente.
  * @returns {{ daysLate: number, amount: number, isLate: boolean }}
  */
-export const calculateFine = (dueDate, referenceDate = new Date()) => {
+export const calculateFine = (dueDate, referenceDate = new Date(), dailyRate = RENTAL_CONFIG.dailyFine) => {
   if (!dueDate) return { daysLate: 0, amount: 0, isLate: false }
   const due = typeof dueDate === 'string' ? parseISO(dueDate) : dueDate
   const ref = typeof referenceDate === 'string' ? parseISO(referenceDate) : referenceDate
@@ -52,7 +56,7 @@ export const calculateFine = (dueDate, referenceDate = new Date()) => {
   if (daysLate <= 0) return { daysLate: 0, amount: 0, isLate: false }
   return {
     daysLate,
-    amount: daysLate * RENTAL_CONFIG.dailyFine,
+    amount: daysLate * dailyRate,
     isLate: true,
   }
 }

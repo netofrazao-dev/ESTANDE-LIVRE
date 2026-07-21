@@ -1,0 +1,43 @@
+# ═══════════════════════════════════════════════════════════════════
+# Backup semanal do banco — roda de graça no GitHub, sem depender do
+# seu computador estar ligado. Necessário porque o plano free do
+# Supabase não inclui backup automático.
+#
+# Setup (uma vez só):
+#   1. No GitHub, vá em Settings → Secrets and variables → Actions
+#   2. Crie um secret chamado SUPABASE_DB_URL com o valor da sua
+#      connection string (Painel do Supabase → Project Settings →
+#      Database → Connection string → URI, com a senha já preenchida)
+#   3. Pronto — o workflow já roda sozinho toda semana
+#
+# Os backups ficam disponíveis por 90 dias na aba "Actions" do repo,
+# em "Artifacts". Baixe periodicamente e guarde em outro lugar (Google
+# Drive, etc.) se quiser reter por mais tempo.
+# ═══════════════════════════════════════════════════════════════════
+name: Backup semanal do banco
+
+on:
+  schedule:
+    - cron: '0 6 * * 1' # toda segunda-feira às 06h UTC (03h em Brasília)
+  workflow_dispatch: {} # permite rodar manualmente pela aba Actions
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Instalar cliente PostgreSQL
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Gerar dump do banco
+        env:
+          DATABASE_URL: ${{ secrets.SUPABASE_DB_URL }}
+        run: |
+          TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+          pg_dump "$DATABASE_URL" -F c -f "estande-livre-${TIMESTAMP}.dump"
+
+      - name: Enviar como artefato
+        uses: actions/upload-artifact@v4
+        with:
+          name: backup-estande-livre-${{ github.run_id }}
+          path: '*.dump'
+          retention-days: 90

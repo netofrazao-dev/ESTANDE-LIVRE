@@ -1,8 +1,10 @@
 import { useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAllRentals } from '@/hooks/useRentals'
 import { calculateFine, formatDatador, formatMoney, rentalStatusLabel } from '@/lib/utils'
 import { cn } from '@/lib/utils'
-import { AlertTriangle } from 'lucide-react'
+import { AlertTriangle, CircleDollarSign } from 'lucide-react'
+import FinePaymentModal from '@/components/admin/FinePaymentModal'
 
 const filters = [
   { key: '', label: 'Todos' },
@@ -14,6 +16,7 @@ const filters = [
 
 export default function AdminRentals() {
   const [statusFilter, setStatusFilter] = useState('')
+  const [paying, setPaying] = useState(null)
   const { data: rentals = [], isLoading } = useAllRentals(
     statusFilter ? { status: statusFilter } : {},
   )
@@ -48,7 +51,7 @@ export default function AdminRentals() {
 
       {/* Tabela */}
       <div className="border border-sepia/15 overflow-x-auto bg-pergaminho">
-        <table className="w-full text-sm min-w-[900px]">
+        <table className="w-full text-sm min-w-[1000px]">
           <thead className="bg-pergaminho-dark/40 border-b border-sepia/15">
             <tr>
               <th className="text-left px-4 py-3 eyebrow">Leitor</th>
@@ -57,29 +60,40 @@ export default function AdminRentals() {
               <th className="text-left px-4 py-3 eyebrow">Devolver até</th>
               <th className="text-left px-4 py-3 eyebrow">Status</th>
               <th className="text-right px-4 py-3 eyebrow">Multa</th>
+              <th className="text-right px-4 py-3 eyebrow w-16">Ação</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sepia/10">
             {isLoading ? (
-              <tr><td colSpan="6" className="text-center py-10 text-sepia">Carregando…</td></tr>
+              <tr><td colSpan="7" className="text-center py-10 text-sepia">Carregando…</td></tr>
             ) : rentals.length === 0 ? (
-              <tr><td colSpan="6" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
+              <tr><td colSpan="7" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
             ) : (
               rentals.map((r) => {
-                const isActive = ['active', 'late'].includes(r.status)
-                const fine = isActive ? calculateFine(r.due_date) : { amount: 0, isLate: false }
-                const totalFee = fine.amount + (r.late_fee || 0) + (r.damage_fee || 0)
+                const isActive = r.status === 'active'
+                const fine = isActive ? calculateFine(r.due_date, new Date(), r.daily_fine_rate) : { amount: 0, isLate: false }
+                const isReturnedWithDebt =
+                  !isActive &&
+                  ((r.late_fee > 0 && !r.late_fee_paid) || (r.damage_fee > 0 && !r.damage_fee_paid))
+                const totalFee = isActive
+                  ? fine.amount
+                  : (r.late_fee || 0) + (r.damage_fee || 0)
 
                 return (
                   <tr
                     key={r.id}
                     className={cn(
                       'hover:bg-pergaminho-dark/20 transition-colors',
-                      fine.isLate && 'bg-terracota/5',
+                      (fine.isLate || isReturnedWithDebt) && 'bg-terracota/5',
                     )}
                   >
                     <td className="px-4 py-3">
-                      <div className="font-medium text-sm">{r.user?.full_name}</div>
+                      <Link
+                        to={`/admin/leitores/${r.user?.id}`}
+                        className="font-medium text-sm hover:text-musgo transition-colors"
+                      >
+                        {r.user?.full_name}
+                      </Link>
                       <div className="text-xs text-cafe/60">{r.user?.email}</div>
                     </td>
                     <td className="px-4 py-3">
@@ -94,6 +108,9 @@ export default function AdminRentals() {
                       fine.isLate && 'text-terracota font-semibold',
                     )}>
                       {formatDatador(r.due_date)}
+                      {r.renewals_count > 0 && (
+                        <span className="ml-1.5 text-[9px] text-sepia">· renovado</span>
+                      )}
                     </td>
                     <td className="px-4 py-3">
                       {fine.isLate ? (
@@ -108,10 +125,24 @@ export default function AdminRentals() {
                     <td className="px-4 py-3 text-right">
                       <span className={cn(
                         'font-mono text-sm tabular-nums',
-                        totalFee > 0 ? 'text-terracota' : 'text-cafe/40',
+                        totalFee > 0 ? (isReturnedWithDebt ? 'text-terracota' : 'text-cafe/40') : 'text-cafe/40',
                       )}>
                         {formatMoney(totalFee)}
                       </span>
+                      {!isActive && totalFee > 0 && !isReturnedWithDebt && (
+                        <div className="text-[9px] text-musgo">quitado</div>
+                      )}
+                    </td>
+                    <td className="px-4 py-3 text-right">
+                      {isReturnedWithDebt && (
+                        <button
+                          onClick={() => setPaying(r)}
+                          className="p-2 text-sepia hover:text-musgo transition-colors"
+                          title="Registrar pagamento"
+                        >
+                          <CircleDollarSign className="w-4 h-4" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 )
@@ -120,6 +151,8 @@ export default function AdminRentals() {
           </tbody>
         </table>
       </div>
+
+      {paying && <FinePaymentModal rental={paying} onClose={() => setPaying(null)} />}
     </div>
   )
 }

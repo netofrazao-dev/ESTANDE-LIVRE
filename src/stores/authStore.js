@@ -42,12 +42,17 @@ export const useAuthStore = create((set, get) => ({
     return data
   },
 
-  signUp: async ({ email, password, fullName, phone }) => {
+  signUp: async ({ email, password, fullName, phone, captchaToken, privacyAccepted }) => {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
-        data: { full_name: fullName, phone },
+        data: {
+          full_name: fullName,
+          phone,
+          privacy_accepted_at: privacyAccepted ? new Date().toISOString() : null,
+        },
+        captchaToken,
       },
     })
     if (error) throw error
@@ -57,6 +62,20 @@ export const useAuthStore = create((set, get) => ({
   signOut: async () => {
     await supabase.auth.signOut()
     set({ user: null, profile: null })
+  },
+
+  // Envia e-mail com link de redefinição de senha
+  resetPasswordForEmail: async (email) => {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/redefinir-senha`,
+    })
+    if (error) throw error
+  },
+
+  // Define nova senha (usado na página /redefinir-senha, após clicar no link do e-mail)
+  updatePassword: async (newPassword) => {
+    const { error } = await supabase.auth.updateUser({ password: newPassword })
+    if (error) throw error
   },
 
   isAdmin: () => get().profile?.role === 'admin',

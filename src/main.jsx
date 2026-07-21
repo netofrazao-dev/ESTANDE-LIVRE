@@ -6,6 +6,20 @@ import { Toaster } from 'react-hot-toast'
 import App from './App.jsx'
 import './index.css'
 
+// Monitoramento de erros (Sentry) — só ativa se VITE_SENTRY_DSN estiver
+// configurada. Sem isso, o app funciona normalmente, só sem telemetria.
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN
+if (sentryDsn) {
+  import('@sentry/react').then((Sentry) => {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: import.meta.env.MODE,
+      tracesSampleRate: 0.2,
+      integrations: [Sentry.browserTracingIntegration()],
+    })
+  })
+}
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

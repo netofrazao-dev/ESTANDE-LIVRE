@@ -2,14 +2,15 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { ArrowRight, BookOpen, Clock, Shield } from 'lucide-react'
 import { useFeaturedBooks, useNewArrivals, useCategories } from '@/hooks/useBooks'
+import { useSettingsStore } from '@/stores/settingsStore'
 import BookGrid from '@/components/books/BookGrid'
 import Button from '@/components/ui/Button'
-import { RENTAL_CONFIG } from '@/lib/utils'
 
 export default function Home() {
   const { data: featured = [], isLoading: loadingFeatured } = useFeaturedBooks()
   const { data: recent = [], isLoading: loadingRecent } = useNewArrivals()
   const { data: categories = [] } = useCategories()
+  const { maxBooksPerRental, rentalDays, dailyFine } = useSettingsStore()
 
   return (
     <>
@@ -29,8 +30,8 @@ export default function Home() {
                 <span className="italic text-musgo">à sua espera.</span>
               </h1>
               <p className="mt-8 text-lg text-cafe/70 max-w-xl text-pretty">
-                Escolha até {RENTAL_CONFIG.maxBooksPerRental} livros por vez, leia com calma por
-                {' '}{RENTAL_CONFIG.rentalDays} dias, devolva quando terminar. Sem pressa, sem estoque em casa.
+                Escolha até {maxBooksPerRental} livros por vez, leia com calma por
+                {' '}{rentalDays} dias, devolva quando terminar. Sem pressa, sem estoque em casa.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
                 <Link to="/acervo">
@@ -60,15 +61,15 @@ export default function Home() {
               <dl className="space-y-2 text-sm font-mono">
                 <div className="flex justify-between">
                   <dt className="text-sepia">Prazo padrão</dt>
-                  <dd className="tabular-nums">{RENTAL_CONFIG.rentalDays} dias</dd>
+                  <dd className="tabular-nums">{rentalDays} dias</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Livros/locação</dt>
-                  <dd className="tabular-nums">até {RENTAL_CONFIG.maxBooksPerRental}</dd>
+                  <dd className="tabular-nums">até {maxBooksPerRental}</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Multa por atraso</dt>
-                  <dd className="tabular-nums">R$ {RENTAL_CONFIG.dailyFine.toFixed(2).replace('.', ',')}/dia</dd>
+                  <dd className="tabular-nums">R$ {dailyFine.toFixed(2).replace('.', ',')}/dia</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Retirada</dt>
@@ -92,7 +93,7 @@ export default function Home() {
               icon: BookOpen,
               step: '01',
               title: 'Escolha',
-              text: `Navegue pelo acervo e adicione até ${RENTAL_CONFIG.maxBooksPerRental} títulos à sua sacola de leitura.`,
+              text: `Navegue pelo acervo e adicione até ${maxBooksPerRental} títulos à sua sacola de leitura.`,
             },
             {
               icon: Shield,
@@ -104,7 +105,7 @@ export default function Home() {
               icon: Clock,
               step: '03',
               title: 'Leia com calma',
-              text: `Tem ${RENTAL_CONFIG.rentalDays} dias para devolver. Passou disso, multa diária começa a correr.`,
+              text: `Tem ${rentalDays} dias para devolver. Passou disso, multa diária começa a correr.`,
             },
           ].map((item) => (
             <div key={item.step}>

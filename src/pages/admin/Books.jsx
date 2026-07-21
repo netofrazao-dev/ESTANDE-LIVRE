@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Plus, Pencil, Trash2, Search, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
+import imageCompression from 'browser-image-compression'
 import { useBooks, useSaveBook, useDeleteBook, useCategories } from '@/hooks/useBooks'
 import { supabase } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
@@ -209,11 +210,20 @@ function BookForm({ book, categories, onCancel, onSave, saving }) {
     if (!file) return
     setUploading(true)
     try {
-      const ext = file.name.split('.').pop()
-      const fileName = `${Date.now()}-${slugify(form.title || 'capa')}.${ext}`
+      // Comprime no navegador antes de subir — uma foto de celular de 4MB
+      // vira ~300KB, sem perda visível numa capa de livro. Menos custo de
+      // Storage e carregamento bem mais rápido no catálogo.
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.4,
+        maxWidthOrHeight: 1000,
+        useWebWorker: true,
+        fileType: 'image/webp',
+      })
+
+      const fileName = `${Date.now()}-${slugify(form.title || 'capa')}.webp`
       const { error } = await supabase.storage
         .from('book-covers')
-        .upload(fileName, file, { upsert: true })
+        .upload(fileName, compressed, { upsert: true, contentType: 'image/webp' })
       if (error) throw error
       const { data } = supabase.storage.from('book-covers').getPublicUrl(fileName)
       setForm({ ...form, cover_url: data.publicUrl })

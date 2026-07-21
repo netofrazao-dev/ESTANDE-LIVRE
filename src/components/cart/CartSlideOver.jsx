@@ -3,15 +3,17 @@ import { X, ShoppingBag, Trash2, ArrowRight, BookOpen } from 'lucide-react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
-import { formatDatador, previewDueDate, RENTAL_CONFIG } from '@/lib/utils'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { formatDatador, previewDueDate } from '@/lib/utils'
 import Button from '../ui/Button'
 
 export default function CartSlideOver() {
   const { isOpen, close, items, removeBook } = useCartStore()
   const user = useAuthStore((s) => s.user)
+  const { maxBooksPerRental, rentalDays, dailyFine } = useSettingsStore()
   const navigate = useNavigate()
 
-  const dueDate = previewDueDate()
+  const dueDate = previewDueDate(rentalDays)
 
   const handleCheckout = () => {
     close()
@@ -46,7 +48,7 @@ export default function CartSlideOver() {
               <div>
                 <div className="eyebrow">Sacola de leitura</div>
                 <div className="font-display text-2xl mt-1">
-                  {items.length} de {RENTAL_CONFIG.maxBooksPerRental}
+                  {items.length} de {maxBooksPerRental}
                 </div>
               </div>
               <button
@@ -64,7 +66,7 @@ export default function CartSlideOver() {
                   <ShoppingBag className="w-10 h-10 text-sepia mb-4" />
                   <h3 className="font-display text-xl mb-2">Sua sacola está vazia</h3>
                   <p className="text-sm text-cafe/60 mb-6 text-pretty">
-                    Passe pelo acervo e escolha até {RENTAL_CONFIG.maxBooksPerRental} títulos por locação.
+                    Passe pelo acervo e escolha até {maxBooksPerRental} títulos por locação.
                   </p>
                   <Link to="/acervo" onClick={close}>
                     <Button variant="secondary">Explorar acervo</Button>
@@ -123,8 +125,8 @@ export default function CartSlideOver() {
                     {formatDatador(dueDate)}
                   </div>
                   <p className="text-[11px] text-cafe/60 mt-2 text-pretty">
-                    Prazo de {RENTAL_CONFIG.rentalDays} dias corridos.
-                    Após esta data, multa de R$ {RENTAL_CONFIG.dailyFine.toFixed(2).replace('.', ',')} por dia.
+                    Prazo de {rentalDays} dias corridos.
+                    Após esta data, multa de R$ {dailyFine.toFixed(2).replace('.', ',')} por dia.
                   </p>
                 </div>
 

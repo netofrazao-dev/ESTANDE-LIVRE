@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '@/stores/authStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import Turnstile, { isCaptchaEnabled } from '@/components/ui/Turnstile'
 
 export default function Signup() {
   const navigate = useNavigate()
@@ -16,6 +17,8 @@ export default function Signup() {
     password: '',
     confirmPassword: '',
   })
+  const [privacyAccepted, setPrivacyAccepted] = useState(false)
+  const [captchaToken, setCaptchaToken] = useState(null)
   const [loading, setLoading] = useState(false)
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value })
@@ -30,9 +33,17 @@ export default function Signup() {
       toast.error('A senha precisa ter ao menos 6 caracteres.')
       return
     }
+    if (!privacyAccepted) {
+      toast.error('É preciso aceitar a Política de Privacidade.')
+      return
+    }
+    if (isCaptchaEnabled && !captchaToken) {
+      toast.error('Confirme que você não é um robô.')
+      return
+    }
     setLoading(true)
     try {
-      await signUp(form)
+      await signUp({ ...form, captchaToken, privacyAccepted })
       toast.success('Cadastro criado! Verifique seu e-mail para confirmar.')
       navigate('/entrar')
     } catch (err) {
@@ -92,6 +103,24 @@ export default function Signup() {
               autoComplete="new-password"
             />
           </div>
+
+          <label className="flex items-start gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={privacyAccepted}
+              onChange={(e) => setPrivacyAccepted(e.target.checked)}
+              className="mt-0.5 w-4 h-4 accent-musgo cursor-pointer"
+            />
+            <span className="text-xs text-cafe/70 leading-relaxed">
+              Li e aceito a{' '}
+              <Link to="/privacidade" target="_blank" className="text-musgo hover:underline underline-offset-4">
+                Política de Privacidade
+              </Link>
+              {' '}e autorizo o uso dos meus dados para gestão da locação, conforme a LGPD.
+            </span>
+          </label>
+
+          <Turnstile onVerify={setCaptchaToken} onExpire={() => setCaptchaToken(null)} />
 
           <Button type="submit" loading={loading} className="w-full">
             Criar cadastro

@@ -6,15 +6,23 @@ import {
   PackageCheck,
   ArrowLeft,
   Shield,
+  Users,
+  Tag,
+  Settings,
+  PlusCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
 
 const items = [
   { to: '/admin', label: 'Painel', icon: LayoutDashboard, end: true },
+  { to: '/admin/nova-locacao', label: 'Nova locação', icon: PlusCircle },
   { to: '/admin/livros', label: 'Acervo', icon: BookMarked },
+  { to: '/admin/categorias', label: 'Categorias', icon: Tag },
   { to: '/admin/emprestimos', label: 'Empréstimos', icon: Library },
   { to: '/admin/devolucoes', label: 'Devoluções', icon: PackageCheck },
+  { to: '/admin/leitores', label: 'Leitores', icon: Users },
+  { to: '/admin/configuracoes', label: 'Configurações', icon: Settings },
 ]
 
 export default function AdminLayout() {

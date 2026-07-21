@@ -1,9 +1,20 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
-import { AlertTriangle, BookOpen, CheckCircle, Clock, X } from 'lucide-react'
+import toast from 'react-hot-toast'
+import {
+  AlertTriangle,
+  BookOpen,
+  CheckCircle,
+  Clock,
+  RotateCw,
+  Bell,
+  X,
+} from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
-import { useMyRentals } from '@/hooks/useRentals'
+import { useMyRentals, useRenewRental } from '@/hooks/useRentals'
+import { useMyReservations, useCancelReservation } from '@/hooks/useReservations'
 import EmptyState from '@/components/ui/EmptyState'
+import Button from '@/components/ui/Button'
 import {
   calculateFine,
   daysUntilDue,
@@ -16,7 +27,8 @@ import { cn } from '@/lib/utils'
 export default function MyRentals() {
   const user = useAuthStore((s) => s.user)
   const { data: rentals = [], isLoading } = useMyRentals(user?.id)
-  const [tick, setTick] = useState(0)
+  const { data: reservations = [] } = useMyReservations(user?.id)
+  const [, setTick] = useState(0)
 
   // Atualiza a cada minuto para o cálculo dinâmico das multas
   useEffect(() => {
@@ -24,12 +36,11 @@ export default function MyRentals() {
     return () => clearInterval(id)
   }, [])
 
-  const active = rentals.filter((r) => ['active', 'late'].includes(r.status))
-  const history = rentals.filter((r) => !['active', 'late'].includes(r.status))
+  const active = rentals.filter((r) => r.status === 'active')
+  const history = rentals.filter((r) => r.status !== 'active')
 
-  // Recalcula status "late" em tempo real
   const enriched = active.map((r) => {
-    const fine = calculateFine(r.due_date)
+    const fine = calculateFine(r.due_date, new Date(), r.daily_fine_rate)
     const days = daysUntilDue(r.due_date)
     return { ...r, fine, days, isLate: fine.isLate }
   })
@@ -77,6 +88,18 @@ export default function MyRentals() {
           tone="sepia"
         />
       </div>
+
+      {/* Reservas na fila */}
+      {reservations.length > 0 && (
+        <section className="mb-16">
+          <h2 className="font-display text-display-sm mb-6">Minhas reservas</h2>
+          <div className="space-y-3">
+            {reservations.map((res) => (
+              <ReservationRow key={res.id} reservation={res} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Aluguéis ativos */}
       <section className="mb-16">
@@ -141,8 +164,76 @@ function KpiCard({ icon: Icon, label, value, tone = 'sepia', isMoney }) {
   )
 }
 
+function ReservationRow({ reservation }) {
+  const { book } = reservation
+  const cancelReservation = useCancelReservation()
+  const isNotified = reservation.status === 'notified'
+
+  const handleCancel = async () => {
+    try {
+      await cancelReservation.mutateAsync(reservation.id)
+      toast.success('Reserva cancelada.')
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível cancelar.')
+    }
+  }
+
+  return (
+    <div
+      className={cn(
+        'flex items-center gap-4 py-3 px-4 border',
+        isNotified ? 'bg-musgo/10 border-musgo/30' : 'bg-pergaminho-dark/20 border-sepia/10',
+      )}
+    >
+      <div className="w-10 h-14 bg-pergaminho-darker flex-shrink-0 overflow-hidden">
+        {book?.cover_url ? (
+          <img src={book.cover_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sepia/40">
+            <BookOpen className="w-4 h-4" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <Link to={`/livro/${book?.slug}`} className="font-medium text-sm hover:text-musgo transition-colors">
+          {book?.title}
+        </Link>
+        <div className={cn('text-xs mt-0.5 flex items-center gap-1.5', isNotified ? 'text-musgo font-medium' : 'text-cafe/60')}>
+          {isNotified ? (
+            <>
+              <Bell className="w-3 h-3" />
+              Disponível! Retire até {formatDatador(reservation.expires_at)}
+            </>
+          ) : (
+            'Aguardando na fila'
+          )}
+        </div>
+      </div>
+      <button
+        onClick={handleCancel}
+        className="p-2 text-sepia hover:text-terracota transition-colors flex-shrink-0"
+        title="Cancelar reserva"
+      >
+        <X className="w-4 h-4" />
+      </button>
+    </div>
+  )
+}
+
 function RentalCard({ rental }) {
   const { book, days, isLate, fine } = rental
+  const renewRental = useRenewRental()
+
+  const canRenew = !isLate && (rental.renewals_count || 0) < (rental.max_renewals ?? 1)
+
+  const handleRenew = async () => {
+    try {
+      await renewRental.mutateAsync({ rentalId: rental.id })
+      toast.success('Empréstimo renovado! Novo prazo definido.')
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível renovar.')
+    }
+  }
 
   return (
     <article
@@ -177,9 +268,12 @@ function RentalCard({ rental }) {
               </Link>
               <p className="text-sm text-cafe/60 mt-1">{book?.author}</p>
             </div>
-            {isLate && (
-              <span className="carimbo carimbo-terracota">Atrasado</span>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {rental.renewals_count > 0 && (
+                <span className="text-[10px] font-mono text-sepia">renovado</span>
+              )}
+              {isLate && <span className="carimbo carimbo-terracota">Atrasado</span>}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-3 border-t border-sepia/15">
@@ -220,7 +314,7 @@ function RentalCard({ rental }) {
             </div>
           </div>
 
-          {isLate && (
+          {isLate ? (
             <div className="mt-4 pt-4 border-t border-terracota/20 flex items-center gap-2 text-sm text-terracota">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>
@@ -228,7 +322,22 @@ function RentalCard({ rental }) {
                 Devolva o mais rápido possível.
               </span>
             </div>
-          )}
+          ) : canRenew ? (
+            <div className="mt-4 pt-4 border-t border-sepia/15 flex items-center justify-between gap-3">
+              <span className="text-xs text-cafe/60">
+                Ainda precisa de mais tempo? Renove uma vez, sem sair de casa.
+              </span>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={handleRenew}
+                loading={renewRental.isPending}
+                className="flex-shrink-0"
+              >
+                <RotateCw className="w-3.5 h-3.5" /> Renovar
+              </Button>
+            </div>
+          ) : null}
         </div>
       </div>
     </article>
@@ -238,7 +347,10 @@ function RentalCard({ rental }) {
 function HistoryRow({ rental }) {
   const wasDamaged = rental.status === 'damaged'
   const wasLost = rental.status === 'lost'
+  const owesLate = rental.late_fee > 0 && !rental.late_fee_paid
+  const owesDamage = rental.damage_fee > 0 && !rental.damage_fee_paid
   const totalFee = (rental.late_fee || 0) + (rental.damage_fee || 0)
+  const owesAnything = owesLate || owesDamage
 
   return (
     <div className="flex items-center gap-4 py-3 px-4 bg-pergaminho-dark/20 border border-sepia/10">
@@ -258,8 +370,7 @@ function HistoryRow({ rental }) {
       <div className="text-right">
         <div className={cn(
           'text-xs font-medium',
-          wasDamaged && 'text-terracota',
-          wasLost && 'text-terracota',
+          (wasDamaged || wasLost) && 'text-terracota',
         )}>
           {rentalStatusLabel(rental.status)}
         </div>
@@ -269,8 +380,13 @@ function HistoryRow({ rental }) {
       </div>
       {totalFee > 0 && (
         <div className="text-right border-l border-sepia/15 pl-4">
-          <div className="text-[10px] text-sepia">Multa</div>
-          <div className="text-sm font-mono text-terracota tabular-nums">
+          <div className="text-[10px] text-sepia">
+            {owesAnything ? 'Em aberto' : 'Quitado'}
+          </div>
+          <div className={cn(
+            'text-sm font-mono tabular-nums',
+            owesAnything ? 'text-terracota' : 'text-musgo',
+          )}>
             {formatMoney(totalFee)}
           </div>
         </div>

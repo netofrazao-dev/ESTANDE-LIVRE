@@ -59,6 +59,15 @@ export default function Login() {
             autoComplete="current-password"
           />
 
+          <div className="text-right -mt-2">
+            <Link
+              to="/esqueci-senha"
+              className="text-xs text-sepia hover:text-cafe underline underline-offset-4"
+            >
+              Esqueceu sua senha?
+            </Link>
+          </div>
+
           <Button type="submit" loading={loading} className="w-full">
             Entrar
           </Button>
