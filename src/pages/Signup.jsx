@@ -1,13 +1,13 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { MailCheck } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Turnstile, { isCaptchaEnabled } from '@/components/ui/Turnstile'
 
 export default function Signup() {
-  const navigate = useNavigate()
   const signUp = useAuthStore((s) => s.signUp)
 
   const [form, setForm] = useState({
@@ -20,6 +20,7 @@ export default function Signup() {
   const [privacyAccepted, setPrivacyAccepted] = useState(false)
   const [captchaToken, setCaptchaToken] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [createdEmail, setCreatedEmail] = useState(null) // controla a tela de "confirme seu e-mail"
 
   const update = (field) => (e) => setForm({ ...form, [field]: e.target.value })
 
@@ -44,13 +45,37 @@ export default function Signup() {
     setLoading(true)
     try {
       await signUp({ ...form, captchaToken, privacyAccepted })
-      toast.success('Cadastro criado! Verifique seu e-mail para confirmar.')
-      navigate('/entrar')
+      setCreatedEmail(form.email)
     } catch (err) {
       toast.error(err.message || 'Não foi possível criar o cadastro.')
     } finally {
       setLoading(false)
     }
+  }
+
+  // Tela de confirmação — fica visível até o leitor agir, não some sozinha
+  // como um toast passageiro.
+  if (createdEmail) {
+    return (
+      <div className="container-book py-16 md:py-24">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-12 h-12 rounded-full bg-musgo/10 flex items-center justify-center mx-auto mb-6">
+            <MailCheck className="w-6 h-6 text-musgo" />
+          </div>
+          <h1 className="font-display text-display-sm mb-3">Confirme seu e-mail</h1>
+          <p className="text-cafe/70 text-sm text-pretty mb-2">
+            Enviamos um link de confirmação para <strong>{createdEmail}</strong>.
+          </p>
+          <p className="text-cafe/70 text-sm text-pretty mb-8">
+            Clique no link do e-mail para ativar sua conta. Se não encontrar, confira também
+            a caixa de spam — às vezes o primeiro e-mail cai lá.
+          </p>
+          <Link to="/entrar" className="text-musgo hover:underline underline-offset-4 text-sm">
+            Já confirmei, ir para o login
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (

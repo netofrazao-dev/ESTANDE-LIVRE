@@ -53,6 +53,10 @@ export const useAuthStore = create((set, get) => ({
           privacy_accepted_at: privacyAccepted ? new Date().toISOString() : null,
         },
         captchaToken,
+        // Reforço: mesmo que o "Site URL" do painel do Supabase esteja
+        // desatualizado, o link do e-mail de confirmação aponta pro
+        // domínio de onde o cadastro foi feito, não pro localhost.
+        emailRedirectTo: `${window.location.origin}/entrar`,
       },
     })
     if (error) throw error

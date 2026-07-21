@@ -26,8 +26,8 @@ select cron.schedule(
   '0 9 * * *',  -- todo dia às 09h (horário do servidor Postgres, UTC por padrão)
   $$
   select net.http_post(
-    url := 'https://fftsvcbcpbwqdfrnkxux.supabase.co/functions/v1/notify-rentals',
-    headers := '{"Authorization": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZmdHN2Y2JjcGJ3cWRmcm5reHV4Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NDU5NzMwMCwiZXhwIjoyMTAwMTczMzAwfQ.xFB_B6eFd06dB5wO4EZNCKie5KV1n-hpGqkPrJWhe1I", "Content-Type": "application/json"}'::jsonb
+    url := 'https://SEU_PROJECT_REF.supabase.co/functions/v1/notify-rentals',
+    headers := '{"Authorization": "Bearer SEU_SERVICE_ROLE_KEY", "Content-Type": "application/json"}'::jsonb
   );
   $$
 );

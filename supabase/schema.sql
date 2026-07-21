@@ -91,8 +91,20 @@ create table if not exists public.books (
 create index idx_books_slug on public.books(slug);
 create index idx_books_category on public.books(category_id);
 create index idx_books_featured on public.books(featured) where featured = true;
+-- Função auxiliar IMMUTABLE para o índice de busca — o Postgres não aceita
+-- to_tsvector(...) direto num índice porque, tecnicamente, ele depende da
+-- configuração de idioma carregada, e não confia que seja imutável.
+-- Embrulhar numa função declarada IMMUTABLE resolve isso (padrão comum).
+create or replace function public.books_search_vector(title text, author text, synopsis text)
+returns tsvector
+language sql
+immutable
+as $$
+  select to_tsvector('portuguese', coalesce(title, '') || ' ' || coalesce(author, '') || ' ' || coalesce(synopsis, ''));
+$$;
+
 create index idx_books_search on public.books using gin (
-  to_tsvector('portuguese', title || ' ' || author || ' ' || coalesce(synopsis, ''))
+  public.books_search_vector(title, author, synopsis)
 );
 
 -- Slugify automático se vier vazio

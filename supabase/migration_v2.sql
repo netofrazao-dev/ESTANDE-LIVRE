@@ -83,9 +83,21 @@ create table if not exists public.notification_log (
 create index if not exists idx_notifications_user on public.notification_log(user_id);
 create index if not exists idx_notifications_pending on public.notification_log(status) where status = 'pending';
 
+-- Função auxiliar IMMUTABLE — o cast timestamptz::date depende do fuso
+-- horário da sessão, então o Postgres não confia que seja imutável "de
+-- verdade" dentro de um índice. Embrulhar resolve (mesmo padrão usado no
+-- índice de busca de livros, em schema.sql).
+create or replace function public.date_only(ts timestamptz)
+returns date
+language sql
+immutable
+as $$
+  select ts::date;
+$$;
+
 -- Evita disparar a mesma notificação duas vezes no mesmo dia
 create unique index if not exists unique_daily_notification
-  on public.notification_log(rental_id, type, (created_at::date))
+  on public.notification_log(rental_id, type, public.date_only(created_at))
   where rental_id is not null;
 
 -- ═══════════════════════════════════════════════════════════════════
