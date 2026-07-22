@@ -91,7 +91,15 @@ export default function Footer() {
             © {new Date().getFullYear()} · {storeName} · Todos os direitos reservados
           </div>
           <div className="font-mono">
-            Feito à mão, com café, por leitores.
+            Site desenvolvido por{' '}
+            <a
+              href="https://www.instagram.com/sites.neto_dev/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-musgo hover:underline underline-offset-4"
+            >
+              Neto Dev
+            </a>
           </div>
         </div>
       </div>

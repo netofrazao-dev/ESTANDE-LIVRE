@@ -1,6 +1,6 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, ShieldCheck, BookOpen, Package, Truck, Store, CheckCircle2, MessageCircle, Instagram, ArrowRight } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, BookOpen, Package, Truck, Store, CheckCircle2, MessageCircle, Instagram, ArrowRight, Phone } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
@@ -8,13 +8,15 @@ import { useSettingsStore } from '@/stores/settingsStore'
 import { useCartBooksPricing } from '@/hooks/useBooks'
 import { useComboPlans } from '@/hooks/usePricing'
 import { useCheckout, useComboCheckout } from '@/hooks/useRentals'
+import { supabase } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
+import Input from '@/components/ui/Input'
 import { formatMoney, waLink, cn } from '@/lib/utils'
 
 export default function Checkout() {
   const navigate = useNavigate()
   const { items: cartItems, clear } = useCartStore()
-  const { user, profile } = useAuthStore()
+  const { user, profile, loadProfile } = useAuthStore()
   const { storeName, whatsappNumber, instagramUrl } = useSettingsStore()
   const bookIds = useMemo(() => cartItems.map((i) => i.book_id), [cartItems])
   const { data: books = [], isLoading } = useCartBooksPricing(bookIds)
@@ -27,9 +29,34 @@ export default function Checkout() {
   const [useCombo, setUseCombo] = useState(false)
   const [accepted, setAccepted] = useState(false)
   const [confirmedInfo, setConfirmedInfo] = useState(null)
+  const [phoneInput, setPhoneInput] = useState('')
+  const [savingPhone, setSavingPhone] = useState(false)
 
   const checkout = useCheckout()
   const comboCheckout = useComboCheckout()
+
+  // Contas criadas antes do telefone virar obrigatório podem estar sem esse
+  // dado — travamos o checkout até completar, já que é essencial pra
+  // combinar retirada/entrega.
+  const needsPhone = !profile?.phone
+
+  const handleSavePhone = async () => {
+    if (!phoneInput.trim()) {
+      toast.error('Informe um telefone.')
+      return
+    }
+    setSavingPhone(true)
+    try {
+      const { error } = await supabase.from('profiles').update({ phone: phoneInput.trim() }).eq('id', user.id)
+      if (error) throw error
+      await loadProfile(user.id)
+      toast.success('Telefone salvo.')
+    } catch (err) {
+      toast.error(err.message || 'Não foi possível salvar o telefone.')
+    } finally {
+      setSavingPhone(false)
+    }
+  }
 
   // Combo elegível: algum combo ativo cujo nº de livros bate com o carrinho
   const eligibleCombo = combos.find((c) => c.book_count === books.length)
@@ -178,6 +205,30 @@ export default function Checkout() {
         <div className="eyebrow mb-2">Passo final</div>
         <h1 className="font-display text-display-lg">Finalizar locação</h1>
       </div>
+
+      {needsPhone && (
+        <div className="ficha bg-musgo/5 border-musgo/20 mb-8">
+          <div className="flex items-center gap-2 mb-2">
+            <Phone className="w-4 h-4 text-musgo" />
+            <span className="eyebrow">Telefone necessário</span>
+          </div>
+          <p className="text-sm text-cafe/80 mb-4 text-pretty">
+            Precisamos do seu telefone para combinar a retirada ou entrega dos livros. Preencha antes
+            de continuar.
+          </p>
+          <div className="flex gap-3 max-w-sm">
+            <Input
+              value={phoneInput}
+              onChange={(e) => setPhoneInput(e.target.value)}
+              placeholder="(96) 99999-9999"
+              className="flex-1"
+            />
+            <Button onClick={handleSavePhone} loading={savingPhone}>
+              Salvar
+            </Button>
+          </div>
+        </div>
+      )}
 
       {booksWithoutPlan.length > 0 && (
         <div className="ficha bg-terracota/5 border-terracota/20 mb-8 text-sm text-terracota">
@@ -403,7 +454,7 @@ export default function Checkout() {
             <Button
               onClick={handleConfirm}
               loading={isPending}
-              disabled={!accepted || booksWithoutPlan.length > 0}
+              disabled={!accepted || booksWithoutPlan.length > 0 || needsPhone}
               className="w-full"
             >
               Confirmar locação

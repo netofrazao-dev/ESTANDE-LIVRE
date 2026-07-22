@@ -26,6 +26,10 @@ export default function Signup() {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    if (!form.phone.trim()) {
+      toast.error('Informe seu telefone.')
+      return
+    }
     if (form.password !== form.confirmPassword) {
       toast.error('As senhas não coincidem.')
       return
@@ -103,11 +107,13 @@ export default function Signup() {
             autoComplete="email"
           />
           <Input
-            label="Telefone (opcional)"
+            label="Telefone"
             type="tel"
             value={form.phone}
             onChange={update('phone')}
             placeholder="(96) 99999-9999"
+            required
+            hint="Precisamos pra combinar retirada/entrega e avisar sobre seus empréstimos"
           />
           <div className="grid grid-cols-2 gap-4">
             <Input

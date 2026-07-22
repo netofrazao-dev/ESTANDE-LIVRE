@@ -103,6 +103,10 @@ function StepReader({ onSelect }) {
 
   const handleCreate = async (e) => {
     e.preventDefault()
+    if (!newReader.phone?.trim()) {
+      toast.error('Informe o telefone do leitor.')
+      return
+    }
     try {
       const result = await createReader.mutateAsync(newReader)
       toast.success('Leitor cadastrado.')
@@ -132,9 +136,10 @@ function StepReader({ onSelect }) {
             required
           />
           <Input
-            label="Telefone (opcional)"
+            label="Telefone"
             value={newReader.phone}
             onChange={(e) => setNewReader({ ...newReader, phone: e.target.value })}
+            required
           />
           <div className="flex gap-3">
             <Button type="button" variant="secondary" onClick={() => setCreating(false)}>
