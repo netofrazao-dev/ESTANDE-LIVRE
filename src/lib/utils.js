@@ -149,3 +149,14 @@ export const rentalStatusLabel = (status) => {
 // ── Truncate ──────────────────────────────────────────────────────
 export const truncate = (str, len = 120) =>
   str && str.length > len ? str.slice(0, len).trimEnd() + '…' : str
+
+// ── WhatsApp ──────────────────────────────────────────────────────
+// Monta o link wa.me a partir de um número formatado tipo "+55 91 9153-4970"
+// (limpa tudo que não for dígito). Se message for passado, já vem com o
+// texto pré-preenchido no WhatsApp.
+export const waLink = (number, message) => {
+  const digits = (number || '').replace(/\D/g, '')
+  if (!digits) return null
+  const base = `https://wa.me/${digits}`
+  return message ? `${base}?text=${encodeURIComponent(message)}` : base
+}

@@ -1,9 +1,11 @@
 import { Link } from 'react-router-dom'
-import { BookMarked, MapPin, Phone, Clock3 } from 'lucide-react'
+import { BookMarked, MapPin, Phone, Clock3, MessageCircle, Instagram } from 'lucide-react'
 import { useSettingsStore } from '@/stores/settingsStore'
+import { waLink } from '@/lib/utils'
 
 export default function Footer() {
-  const { storeName, storeAddress, storePhone, storeHours } = useSettingsStore()
+  const { storeName, storeAddress, storePhone, storeHours, whatsappNumber, instagramUrl } = useSettingsStore()
+  const whatsapp = waLink(whatsappNumber, `Olá! Vim pelo site da ${storeName} e queria tirar uma dúvida.`)
 
   return (
     <footer className="border-t border-sepia/15 bg-pergaminho-dark/30 mt-24">
@@ -15,10 +17,32 @@ export default function Footer() {
               <BookMarked className="w-5 h-5 text-cafe" />
               <span className="font-display text-xl">{storeName}</span>
             </div>
-            <p className="text-sm text-cafe/70 max-w-sm text-pretty">
+            <p className="text-sm text-cafe/70 max-w-sm text-pretty mb-4">
               Uma locadora de livros pensada para quem trata a leitura como um encontro,
               e não como um consumo apressado.
             </p>
+            <div className="flex items-center gap-3">
+              {whatsapp && (
+                <a
+                  href={whatsapp}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-musgo hover:underline underline-offset-4"
+                >
+                  <MessageCircle className="w-3.5 h-3.5" /> WhatsApp
+                </a>
+              )}
+              {instagramUrl && (
+                <a
+                  href={instagramUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs text-musgo hover:underline underline-offset-4"
+                >
+                  <Instagram className="w-3.5 h-3.5" /> Instagram
+                </a>
+              )}
+            </div>
           </div>
 
           {/* Navegar */}

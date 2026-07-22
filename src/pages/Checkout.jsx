@@ -1,19 +1,21 @@
 import { useState, useMemo, useEffect } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import { ArrowLeft, ShieldCheck, BookOpen, Package, Truck, Store } from 'lucide-react'
+import { ArrowLeft, ShieldCheck, BookOpen, Package, Truck, Store, CheckCircle2, MessageCircle, Instagram, ArrowRight } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
+import { useSettingsStore } from '@/stores/settingsStore'
 import { useCartBooksPricing } from '@/hooks/useBooks'
 import { useComboPlans } from '@/hooks/usePricing'
 import { useCheckout, useComboCheckout } from '@/hooks/useRentals'
 import Button from '@/components/ui/Button'
-import { formatMoney, cn } from '@/lib/utils'
+import { formatMoney, waLink, cn } from '@/lib/utils'
 
 export default function Checkout() {
   const navigate = useNavigate()
   const { items: cartItems, clear } = useCartStore()
   const { user, profile } = useAuthStore()
+  const { storeName, whatsappNumber, instagramUrl } = useSettingsStore()
   const bookIds = useMemo(() => cartItems.map((i) => i.book_id), [cartItems])
   const { data: books = [], isLoading } = useCartBooksPricing(bookIds)
   const { data: combos = [] } = useComboPlans({ onlyActive: true })
@@ -24,6 +26,7 @@ export default function Checkout() {
   const [deliveryAddress, setDeliveryAddress] = useState('')
   const [useCombo, setUseCombo] = useState(false)
   const [accepted, setAccepted] = useState(false)
+  const [confirmedInfo, setConfirmedInfo] = useState(null)
 
   const checkout = useCheckout()
   const comboCheckout = useComboCheckout()
@@ -45,6 +48,56 @@ export default function Checkout() {
       return next
     })
   }, [books])
+
+  if (confirmedInfo) {
+    const whatsapp = waLink(
+      whatsappNumber,
+      `Olá! Acabei de fazer uma locação no site (${confirmedInfo.bookTitles.join(', ')}) e ` +
+        `queria combinar a ${confirmedInfo.deliveryMethod === 'delivery' ? 'entrega' : 'retirada'}.`,
+    )
+
+    return (
+      <div className="container-book py-16 md:py-24">
+        <div className="max-w-md mx-auto text-center">
+          <div className="w-14 h-14 rounded-full bg-musgo/10 flex items-center justify-center mx-auto mb-6">
+            <CheckCircle2 className="w-7 h-7 text-musgo" />
+          </div>
+          <h1 className="font-display text-display-sm mb-3">Locação confirmada!</h1>
+          <p className="text-cafe/70 text-sm text-pretty mb-2">
+            Total de <strong>{formatMoney(confirmedInfo.total)}</strong>, pagamento combinado na{' '}
+            {confirmedInfo.deliveryMethod === 'delivery' ? 'entrega' : 'retirada'}.
+          </p>
+          <p className="text-cafe/70 text-sm text-pretty mb-8">
+            Fale com a gente pelo WhatsApp pra combinar os detalhes e tirar qualquer dúvida.
+          </p>
+
+          <div className="space-y-3 mb-8">
+            {whatsapp && (
+              <a href={whatsapp} target="_blank" rel="noopener noreferrer" className="block">
+                <Button className="w-full">
+                  <MessageCircle className="w-4 h-4" /> Falar no WhatsApp
+                </Button>
+              </a>
+            )}
+            <Button variant="secondary" onClick={() => navigate('/minha-estante')} className="w-full">
+              Ver Minha Estante <ArrowRight className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {instagramUrl && (
+            <a
+              href={instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-sepia hover:text-cafe transition-colors"
+            >
+              <Instagram className="w-3.5 h-3.5" /> Segue a {storeName} no Instagram
+            </a>
+          )}
+        </div>
+      </div>
+    )
+  }
 
   if (cartItems.length === 0) {
     return (
@@ -101,9 +154,10 @@ export default function Checkout() {
           deliveryAddress,
         })
       }
+      const bookTitles = books.map((b) => b.title)
       toast.success('Locação registrada!')
+      setConfirmedInfo({ total, deliveryMethod, bookTitles })
       clear()
-      navigate('/minha-estante')
     } catch (err) {
       toast.error(err.message || 'Não foi possível concluir a locação.')
     }

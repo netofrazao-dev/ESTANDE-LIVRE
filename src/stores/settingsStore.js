@@ -20,6 +20,8 @@ export const useSettingsStore = create((set, get) => ({
   storeAddress: '',
   storePhone: '',
   storeHours: '',
+  whatsappNumber: '',
+  instagramUrl: '',
   loaded: false,
 
   load: async () => {
@@ -40,6 +42,8 @@ export const useSettingsStore = create((set, get) => ({
       storeAddress: data.store_address || '',
       storePhone: data.store_phone || '',
       storeHours: data.store_hours || '',
+      whatsappNumber: data.whatsapp_number || '',
+      instagramUrl: data.instagram_url || '',
       loaded: true,
     })
   },
@@ -61,6 +65,8 @@ export const useSettingsStore = create((set, get) => ({
     if (patch.storeAddress !== undefined) dbPatch.store_address = patch.storeAddress
     if (patch.storePhone !== undefined) dbPatch.store_phone = patch.storePhone
     if (patch.storeHours !== undefined) dbPatch.store_hours = patch.storeHours
+    if (patch.whatsappNumber !== undefined) dbPatch.whatsapp_number = patch.whatsappNumber
+    if (patch.instagramUrl !== undefined) dbPatch.instagram_url = patch.instagramUrl
 
     const { error } = await supabase.from('settings').update(dbPatch).eq('id', 1)
     if (error) throw error

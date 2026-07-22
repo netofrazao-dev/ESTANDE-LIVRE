@@ -23,6 +23,8 @@ export default function AdminSettings() {
         storeAddress: settings.storeAddress,
         storePhone: settings.storePhone,
         storeHours: settings.storeHours,
+        whatsappNumber: settings.whatsappNumber,
+        instagramUrl: settings.instagramUrl,
       })
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -158,7 +160,7 @@ export default function AdminSettings() {
             />
             <div className="grid grid-cols-2 gap-4">
               <Input
-                label="Telefone / WhatsApp"
+                label="Telefone"
                 value={form.storePhone}
                 onChange={update('storePhone')}
                 placeholder="(91) 99999-9999"
@@ -168,6 +170,21 @@ export default function AdminSettings() {
                 value={form.storeHours}
                 onChange={update('storeHours')}
                 placeholder="Seg a sáb, 9h às 18h"
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input
+                label="WhatsApp"
+                value={form.whatsappNumber}
+                onChange={update('whatsappNumber')}
+                placeholder="+55 91 99999-9999"
+                hint="Com DDI e DDD — usado no link de contato direto"
+              />
+              <Input
+                label="Instagram"
+                value={form.instagramUrl}
+                onChange={update('instagramUrl')}
+                placeholder="https://www.instagram.com/seu-perfil/"
               />
             </div>
           </div>
