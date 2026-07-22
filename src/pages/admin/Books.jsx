@@ -43,8 +43,12 @@ export default function AdminBooks() {
 
   const handleSave = async (book) => {
     try {
+      // Remove os objetos aninhados que vêm do JOIN (category, pricing_plan)
+      // — no banco só existem as colunas category_id/pricing_plan_id.
+      // Mandar esses objetos junto quebra o update com "coluna não encontrada".
+      const { category, pricing_plan, ...bookData } = book
       const payload = {
-        ...book,
+        ...bookData,
         slug: book.slug || slugify(book.title),
         year: book.year ? Number(book.year) : null,
         pages: book.pages ? Number(book.pages) : null,
