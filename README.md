@@ -304,8 +304,12 @@ prontas no projeto:
 já configurado. Basta:
 1. Subir este projeto para um repositório no GitHub
 2. Em Settings → Secrets and variables → Actions, criar o secret
-   `SUPABASE_DB_URL` com a connection string do seu banco (Project Settings
-   → Database → Connection string → URI)
+   `SUPABASE_DB_URL` com a connection string do seu banco — painel do
+   Supabase → botão **"Connect"** (topo da página) → aba **"Direct"** →
+   **"Session pooler"** → copie a URI, com a senha real no lugar de
+   `[YOUR-PASSWORD]`. **Importante:** o usuário precisa vir como
+   `postgres.SEU_PROJECT_REF` (não só `postgres`) — é assim que já
+   aparece na tela do Supabase, só não troque por engano
 3. Pronto — todo segunda-feira roda sozinho, backup fica disponível por
    90 dias na aba Actions → Artifacts do repositório
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # ═══════════════════════════════════════════════════════════════════
-# ESTANDE LIVRE — Backup manual do banco (plano free do Supabase)
+# ESTANTE LIVRE — Backup manual do banco (plano free do Supabase)
 # ═══════════════════════════════════════════════════════════════════
 #
 # O plano free do Supabase NÃO faz backup automático diário (isso só
@@ -8,15 +8,22 @@
 # usando pg_dump, pra você guardar em algum lugar seguro.
 #
 # Uso local:
-#   export DATABASE_URL="postgresql://postgres:[SENHA]@db.[REF].supabase.co:5432/postgres"
+#   export DATABASE_URL="postgresql://postgres.[REF]:[SENHA]@aws-0-xxxxx.pooler.supabase.com:5432/postgres"
 #   ./scripts/backup.sh
 #
 # Onde achar a DATABASE_URL:
-#   Painel do Supabase → Project Settings → Database → Connection string → URI
+#   Painel do Supabase → botão "Connect" (topo da página) → aba "Direct"
+#   → "Session pooler" → copie a URI, com a senha real no lugar de
+#   [YOUR-PASSWORD]. Repare que o usuário vem como "postgres.SEU_REF",
+#   não só "postgres" — isso é obrigatório pra conexão via pooler.
 #
-# Requer o cliente `pg_dump` instalado (vem com o PostgreSQL):
-#   macOS:   brew install libpq && brew link --force libpq
-#   Ubuntu:  sudo apt install postgresql-client
+# Requer o cliente `pg_dump` na versão 17 (o Supabase roda Postgres 17;
+# uma versão mais antiga do pg_dump recusa conectar em servidor mais
+# novo que ele):
+#   macOS:   brew install libpq@17 && brew link --force libpq@17
+#   Ubuntu:  sudo apt-get install postgresql-common && \
+#            sudo /usr/share/postgresql-common/pgdg/apt.postgresqlorg.sh -y && \
+#            sudo apt-get install postgresql-client-17
 # ═══════════════════════════════════════════════════════════════════
 
 set -euo pipefail
@@ -29,7 +36,7 @@ fi
 
 TIMESTAMP=$(date +%Y%m%d-%H%M%S)
 OUT_DIR="${BACKUP_DIR:-./backups}"
-OUT_FILE="${OUT_DIR}/estande-livre-${TIMESTAMP}.dump"
+OUT_FILE="${OUT_DIR}/estante-livre-${TIMESTAMP}.dump"
 
 mkdir -p "$OUT_DIR"
 
@@ -40,4 +47,4 @@ echo "Backup concluído: ${OUT_FILE}"
 echo "Para restaurar: pg_restore -d \"\$DATABASE_URL\" --clean --if-exists \"${OUT_FILE}\""
 
 # Mantém só os 10 backups mais recentes na pasta local, pra não lotar o disco
-ls -1t "${OUT_DIR}"/estande-livre-*.dump 2>/dev/null | tail -n +11 | xargs -r rm --
+ls -1t "${OUT_DIR}"/estante-livre-*.dump 2>/dev/null | tail -n +11 | xargs -r rm --
