@@ -9,25 +9,29 @@ import {
   RotateCw,
   Bell,
   X,
+  Truck,
+  Store,
 } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import { useMyRentals, useRenewRental } from '@/hooks/useRentals'
 import { useMyReservations, useCancelReservation } from '@/hooks/useReservations'
+import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 import EmptyState from '@/components/ui/EmptyState'
 import Button from '@/components/ui/Button'
 import {
-  calculateFine,
+  computeRentalFine,
   daysUntilDue,
   formatDatador,
   formatMoney,
   rentalStatusLabel,
+  cn,
 } from '@/lib/utils'
-import { cn } from '@/lib/utils'
 
 export default function MyRentals() {
   const user = useAuthStore((s) => s.user)
   const { data: rentals = [], isLoading } = useMyRentals(user?.id)
   const { data: reservations = [] } = useMyReservations(user?.id)
+  const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
   const [, setTick] = useState(0)
 
   // Atualiza a cada minuto para o cálculo dinâmico das multas
@@ -40,9 +44,10 @@ export default function MyRentals() {
   const history = rentals.filter((r) => r.status !== 'active')
 
   const enriched = active.map((r) => {
-    const fine = calculateFine(r.due_date, new Date(), r.daily_fine_rate)
+    const hasReservation = waitlistSet.has(r.book_id)
+    const fine = computeRentalFine(r, hasReservation)
     const days = daysUntilDue(r.due_date)
-    return { ...r, fine, days, isLate: fine.isLate }
+    return { ...r, fine, days, isLate: fine.isLate, hasReservation }
   })
 
   const totalPendingFine = enriched.reduce((sum, r) => sum + r.fine.amount, 0)
@@ -221,7 +226,7 @@ function ReservationRow({ reservation }) {
 }
 
 function RentalCard({ rental }) {
-  const { book, days, isLate, fine } = rental
+  const { book, days, isLate, fine, hasReservation } = rental
   const renewRental = useRenewRental()
 
   const canRenew = !isLate && (rental.renewals_count || 0) < (rental.max_renewals ?? 1)
@@ -243,7 +248,6 @@ function RentalCard({ rental }) {
       )}
     >
       <div className="flex gap-6">
-        {/* Capa */}
         <Link
           to={`/livro/${book?.slug}`}
           className="w-20 h-28 bg-pergaminho-darker flex-shrink-0 overflow-hidden shadow-book"
@@ -267,6 +271,19 @@ function RentalCard({ rental }) {
                 {book?.title}
               </Link>
               <p className="text-sm text-cafe/60 mt-1">{book?.author}</p>
+              <div className="flex items-center gap-3 mt-2 text-[11px] text-cafe/60">
+                <span className="flex items-center gap-1">
+                  {rental.delivery_method === 'delivery' ? (
+                    <><Truck className="w-3 h-3" /> Entrega</>
+                  ) : (
+                    <><Store className="w-3 h-3" /> Retirada na loja</>
+                  )}
+                </span>
+                <span className="font-mono">{formatMoney(rental.price)}</span>
+                <span className={rental.rental_paid ? 'text-musgo' : 'text-terracota'}>
+                  {rental.rental_paid ? 'pago' : 'a combinar'}
+                </span>
+              </div>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
               {rental.renewals_count > 0 && (
@@ -318,7 +335,8 @@ function RentalCard({ rental }) {
             <div className="mt-4 pt-4 border-t border-terracota/20 flex items-center gap-2 text-sm text-terracota">
               <AlertTriangle className="w-4 h-4 flex-shrink-0" />
               <span>
-                A multa cresce em {formatMoney(rental.daily_fine_rate)} a cada novo dia.
+                A multa cresce {formatMoney(hasReservation ? rental.daily_fine_reserved : rental.daily_fine_normal)}
+                {' '}por dia{hasReservation ? ' (há fila de espera por este título)' : ''}.
                 Devolva o mais rápido possível.
               </span>
             </div>
@@ -344,13 +362,20 @@ function RentalCard({ rental }) {
   )
 }
 
+const damageTypeLabel = {
+  minor_cover: 'dano leve na capa',
+  torn_cover: 'capa arrancada',
+  lost: 'extraviado',
+}
+
 function HistoryRow({ rental }) {
   const wasDamaged = rental.status === 'damaged'
   const wasLost = rental.status === 'lost'
+  const owesRental = rental.price > 0 && !rental.rental_paid
   const owesLate = rental.late_fee > 0 && !rental.late_fee_paid
   const owesDamage = rental.damage_fee > 0 && !rental.damage_fee_paid
-  const totalFee = (rental.late_fee || 0) + (rental.damage_fee || 0)
-  const owesAnything = owesLate || owesDamage
+  const totalFee = (rental.price || 0) + (rental.late_fee || 0) + (rental.damage_fee || 0)
+  const owesAnything = owesRental || owesLate || owesDamage
 
   return (
     <div className="flex items-center gap-4 py-3 px-4 bg-pergaminho-dark/20 border border-sepia/10">
@@ -368,11 +393,9 @@ function HistoryRow({ rental }) {
         <div className="text-xs text-cafe/60">{rental.book?.author}</div>
       </div>
       <div className="text-right">
-        <div className={cn(
-          'text-xs font-medium',
-          (wasDamaged || wasLost) && 'text-terracota',
-        )}>
+        <div className={cn('text-xs font-medium', (wasDamaged || wasLost) && 'text-terracota')}>
           {rentalStatusLabel(rental.status)}
+          {rental.damage_type && ` · ${damageTypeLabel[rental.damage_type] || rental.damage_type}`}
         </div>
         <div className="text-[10px] text-sepia font-mono">
           {formatDatador(rental.returned_at)}

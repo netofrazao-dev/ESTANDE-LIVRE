@@ -10,7 +10,7 @@ export default function Home() {
   const { data: featured = [], isLoading: loadingFeatured } = useFeaturedBooks()
   const { data: recent = [], isLoading: loadingRecent } = useNewArrivals()
   const { data: categories = [] } = useCategories()
-  const { maxBooksPerRental, rentalDays, dailyFine } = useSettingsStore()
+  const { maxBooksPerRental } = useSettingsStore()
 
   return (
     <>
@@ -30,8 +30,8 @@ export default function Home() {
                 <span className="italic text-musgo">à sua espera.</span>
               </h1>
               <p className="mt-8 text-lg text-cafe/70 max-w-xl text-pretty">
-                Escolha até {maxBooksPerRental} livros por vez, leia com calma por
-                {' '}{rentalDays} dias, devolva quando terminar. Sem pressa, sem estoque em casa.
+                Escolha até {maxBooksPerRental} livros por vez, defina o prazo de cada um e
+                {' '}devolva quando terminar. Sem pressa, sem estoque em casa.
               </p>
               <div className="mt-10 flex flex-wrap gap-3">
                 <Link to="/acervo">
@@ -60,8 +60,8 @@ export default function Home() {
               <div className="rule-double" />
               <dl className="space-y-2 text-sm font-mono">
                 <div className="flex justify-between">
-                  <dt className="text-sepia">Prazo padrão</dt>
-                  <dd className="tabular-nums">{rentalDays} dias</dd>
+                  <dt className="text-sepia">Prazo</dt>
+                  <dd className="tabular-nums">varia por livro</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Livros/locação</dt>
@@ -69,11 +69,11 @@ export default function Home() {
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Multa por atraso</dt>
-                  <dd className="tabular-nums">R$ {dailyFine.toFixed(2).replace('.', ',')}/dia</dd>
+                  <dd className="tabular-nums">varia por livro</dd>
                 </div>
                 <div className="flex justify-between">
                   <dt className="text-sepia">Retirada</dt>
-                  <dd>presencial</dd>
+                  <dd>presencial ou entrega</dd>
                 </div>
               </dl>
               <div className="rule-double" />
@@ -105,7 +105,7 @@ export default function Home() {
               icon: Clock,
               step: '03',
               title: 'Leia com calma',
-              text: `Tem ${rentalDays} dias para devolver. Passou disso, multa diária começa a correr.`,
+              text: 'Escolha o prazo de cada livro no checkout. Passou da data combinada, multa diária começa a correr.',
             },
           ].map((item) => (
             <div key={item.step}>

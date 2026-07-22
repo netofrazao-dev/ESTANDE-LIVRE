@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import toast from 'react-hot-toast'
-import { CheckCircle, AlertCircle, X, BookOpen } from 'lucide-react'
+import { CheckCircle, AlertCircle, ShieldAlert, X, BookOpen } from 'lucide-react'
 import { useAllRentals, useReturnBook } from '@/hooks/useRentals'
-import { calculateFine, formatDatador, formatMoney, RENTAL_CONFIG } from '@/lib/utils'
+import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
+import { useSettingsStore } from '@/stores/settingsStore'
+import { computeRentalFine, formatDatador, formatMoney, cn } from '@/lib/utils'
 import Button from '@/components/ui/Button'
 import Modal from '@/components/ui/Modal'
-import { cn } from '@/lib/utils'
 
 export default function AdminReturns() {
   const { data: rentals = [], isLoading } = useAllRentals({ status: 'active' })
+  const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
   const [returning, setReturning] = useState(null)
 
   return (
@@ -32,7 +34,8 @@ export default function AdminReturns() {
       ) : (
         <div className="space-y-3">
           {rentals.map((rental) => {
-            const fine = calculateFine(rental.due_date, new Date(), rental.daily_fine_rate)
+            const hasReservation = waitlistSet.has(rental.book_id)
+            const fine = computeRentalFine(rental, hasReservation)
             return (
               <div
                 key={rental.id}
@@ -64,6 +67,7 @@ export default function AdminReturns() {
                     {fine.isLate && (
                       <span className="text-terracota font-semibold">
                         Multa acumulada: {formatMoney(fine.amount)} ({fine.daysLate}d)
+                        {hasReservation && ' · taxa de reservado'}
                       </span>
                     )}
                   </div>
@@ -79,42 +83,38 @@ export default function AdminReturns() {
       )}
 
       {returning && (
-        <ReturnModal rental={returning} onClose={() => setReturning(null)} />
+        <ReturnModal
+          rental={returning}
+          hasReservation={waitlistSet.has(returning.book_id)}
+          onClose={() => setReturning(null)}
+        />
       )}
     </div>
   )
 }
 
 // ── Modal de devolução ───────────────────────────────────────────
-function ReturnModal({ rental, onClose }) {
+function ReturnModal({ rental, hasReservation, onClose }) {
   const [condition, setCondition] = useState('ok')
   const [notes, setNotes] = useState('')
   const returnBook = useReturnBook()
+  const { minorDamageFee, lostAdminFee } = useSettingsStore()
 
-  const fine = calculateFine(rental.due_date, new Date(), rental.daily_fine_rate)
-
-  // Usa as taxas CONGELADAS no momento do aceite do contrato (rental.damage_fee_rate /
-  // rental.loss_fee_rate), não os valores "ao vivo" de RENTAL_CONFIG — assim, mudanças
-  // futuras na taxa não afetam contratos já assinados.
-  const damageFeeRate = rental.damage_fee_rate ?? RENTAL_CONFIG.damageFee
-  const lossFeeRate = rental.loss_fee_rate ?? RENTAL_CONFIG.lossFee
+  const fine = computeRentalFine(rental, hasReservation)
+  const replacementValue = rental.book?.replacement_value || 0
 
   const feeMap = {
     ok: 0,
-    damaged: damageFeeRate,
-    lost: lossFeeRate,
+    minor_cover: minorDamageFee,
+    torn_cover: replacementValue + lostAdminFee,
+    lost: replacementValue + lostAdminFee,
   }
   const fee = feeMap[condition]
   const total = fine.amount + fee
 
   const handleConfirm = async () => {
     try {
-      await returnBook.mutateAsync({
-        rentalId: rental.id,
-        condition,
-        fee,
-        notes,
-      })
+      await returnBook.mutateAsync({ rentalId: rental.id, condition, notes })
       toast.success('Devolução registrada.')
       onClose()
     } catch (err) {
@@ -142,6 +142,11 @@ function ReturnModal({ rental, onClose }) {
           <div className="eyebrow mb-1">Livro</div>
           <div className="font-medium">{rental.book?.title}</div>
           <div className="text-xs text-cafe/60">Leitor: {rental.user?.full_name}</div>
+          {hasReservation && (
+            <div className="text-xs text-terracota mt-1">
+              Há leitor(es) na fila de espera — multa de atraso usa a taxa "reservado".
+            </div>
+          )}
         </div>
 
         <div>
@@ -157,12 +162,25 @@ function ReturnModal({ rental, onClose }) {
               tone="musgo"
             />
             <ConditionOption
-              value="damaged"
+              value="minor_cover"
               current={condition}
               onSelect={setCondition}
               icon={AlertCircle}
-              label="Com dano ou avaria"
-              description={`Taxa de reparo de ${formatMoney(damageFeeRate)} é aplicada.`}
+              label="Dano leve na capa"
+              description={`Amassado ou rasgo pequeno. Taxa fixa de ${formatMoney(minorDamageFee)}. Volta ao acervo.`}
+              tone="terracota"
+            />
+            <ConditionOption
+              value="torn_cover"
+              current={condition}
+              onSelect={setCondition}
+              icon={ShieldAlert}
+              label="Capa arrancada"
+              description={
+                replacementValue > 0
+                  ? `Livro novo (${formatMoney(replacementValue)}) + taxa de ${formatMoney(lostAdminFee)}. Sai do acervo.`
+                  : `Cadastre o valor de reposição deste livro em Acervo — usando apenas a taxa de ${formatMoney(lostAdminFee)} por enquanto.`
+              }
               tone="terracota"
             />
             <ConditionOption
@@ -170,14 +188,18 @@ function ReturnModal({ rental, onClose }) {
               current={condition}
               onSelect={setCondition}
               icon={X}
-              label="Extraviado ou inutilizado"
-              description={`Cobrança de reposição de ${formatMoney(lossFeeRate)}. O livro sai do acervo.`}
+              label="Extraviado / sem condições de uso"
+              description={
+                replacementValue > 0
+                  ? `Livro novo (${formatMoney(replacementValue)}) + taxa de ${formatMoney(lostAdminFee)}. Sai do acervo.`
+                  : `Cadastre o valor de reposição deste livro em Acervo — usando apenas a taxa de ${formatMoney(lostAdminFee)} por enquanto.`
+              }
               tone="terracota"
             />
           </div>
         </div>
 
-        {(condition === 'damaged' || condition === 'lost') && (
+        {condition !== 'ok' && (
           <div>
             <label className="eyebrow block mb-2">Observações (opcional)</label>
             <textarea
@@ -190,21 +212,22 @@ function ReturnModal({ rental, onClose }) {
           </div>
         )}
 
-        {/* Total */}
         {total > 0 && (
           <div className="ficha bg-terracota/5 border-terracota/20">
             <div className="eyebrow text-terracota mb-3">Total a cobrar do leitor</div>
             <dl className="space-y-1 text-sm">
               {fine.amount > 0 && (
                 <div className="flex justify-between">
-                  <dt className="text-cafe/70">Multa por atraso ({fine.daysLate}d)</dt>
+                  <dt className="text-cafe/70">
+                    Multa por atraso ({fine.daysLate}d{hasReservation ? ' · reservado' : ''})
+                  </dt>
                   <dd className="font-mono tabular-nums">{formatMoney(fine.amount)}</dd>
                 </div>
               )}
               {fee > 0 && (
                 <div className="flex justify-between">
                   <dt className="text-cafe/70">
-                    Taxa de {condition === 'lost' ? 'reposição' : 'reparo'}
+                    {condition === 'minor_cover' ? 'Taxa de reparo' : 'Reposição + taxa administrativa'}
                   </dt>
                   <dd className="font-mono tabular-nums">{formatMoney(fee)}</dd>
                 </div>
@@ -215,6 +238,12 @@ function ReturnModal({ rental, onClose }) {
                 <dd className="font-mono tabular-nums text-terracota">{formatMoney(total)}</dd>
               </div>
             </dl>
+            {condition !== 'ok' && (
+              <p className="text-[11px] text-sepia mt-3 text-pretty">
+                Se a multa continuar em aberto, ela segue contando dia a dia até você registrar o
+                pagamento em Empréstimos ou no perfil do leitor.
+              </p>
+            )}
           </div>
         )}
       </div>

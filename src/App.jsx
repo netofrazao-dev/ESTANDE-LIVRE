@@ -29,6 +29,7 @@ const AdminReaderDetail = lazy(() => import('./pages/admin/ReaderDetail'))
 const AdminCategories = lazy(() => import('./pages/admin/Categories'))
 const AdminSettings = lazy(() => import('./pages/admin/Settings'))
 const AdminNewRental = lazy(() => import('./pages/admin/NewRental'))
+const AdminPricingPlans = lazy(() => import('./pages/admin/PricingPlans'))
 
 import { useAuthStore } from './stores/authStore'
 import { useSettingsStore } from './stores/settingsStore'
@@ -88,6 +89,7 @@ export default function App() {
         <Route path="categorias" element={<Suspense fallback={<AdminFallback />}><AdminCategories /></Suspense>} />
         <Route path="configuracoes" element={<Suspense fallback={<AdminFallback />}><AdminSettings /></Suspense>} />
         <Route path="nova-locacao" element={<Suspense fallback={<AdminFallback />}><AdminNewRental /></Suspense>} />
+        <Route path="planos-de-preco" element={<Suspense fallback={<AdminFallback />}><AdminPricingPlans /></Suspense>} />
       </Route>
     </Routes>
   )

@@ -8,7 +8,7 @@ export const useBooks = ({ category, search, sort = 'newest' } = {}) => {
     queryFn: async () => {
       let query = supabase
         .from('books')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
 
       if (category) query = query.eq('category.slug', category)
       if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`)
@@ -41,13 +41,38 @@ export const useBook = (slug) => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('books')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
         .eq('slug', slug)
         .single()
       if (error) throw error
       return data
     },
     enabled: !!slug,
+  })
+}
+
+// Livros do carrinho, com plano de preço e tiers completos (usado no checkout)
+export const useCartBooksPricing = (bookIds = []) => {
+  return useQuery({
+    queryKey: ['books', 'cart-pricing', bookIds],
+    queryFn: async () => {
+      if (bookIds.length === 0) return []
+      const { data, error } = await supabase
+        .from('books')
+        .select(`
+          id, title, author, cover_url, available_copies,
+          pricing_plan:pricing_plans(id, name, tiers:pricing_plan_tiers(*))
+        `)
+        .in('id', bookIds)
+      if (error) throw error
+      return (data || []).map((b) => ({
+        ...b,
+        pricing_plan: b.pricing_plan
+          ? { ...b.pricing_plan, tiers: (b.pricing_plan.tiers || []).sort((a, c) => a.days - c.days) }
+          : null,
+      }))
+    },
+    enabled: bookIds.length > 0,
   })
 }
 
@@ -58,7 +83,7 @@ export const useFeaturedBooks = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('books')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
         .eq('featured', true)
         .order('created_at', { ascending: false })
         .limit(6)
@@ -75,7 +100,7 @@ export const useNewArrivals = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('books')
-        .select('*, category:categories(id, name, slug)')
+        .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
         .order('created_at', { ascending: false })
         .limit(8)
       if (error) throw error

@@ -1,6 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
-import { addDays } from 'date-fns'
 import { RENTAL_CONFIG } from '@/lib/utils'
 import { useSettingsStore } from '@/stores/settingsStore'
 
@@ -30,7 +29,7 @@ export const useAllRentals = ({ status } = {}) => {
         .from('rentals')
         .select(`
           *,
-          book:books(id, title, author, cover_url),
+          book:books(id, title, author, cover_url, replacement_value),
           user:profiles(id, full_name, email, phone)
         `)
         .order('due_date', { ascending: true })
@@ -44,27 +43,25 @@ export const useAllRentals = ({ status } = {}) => {
   })
 }
 
-// Criar aluguéis (checkout) — via RPC atômica no banco, com trava de linha
-// por livro. Evita que duas pessoas "ganhem" o último exemplar ao mesmo
-// tempo: a segunda tentativa concorrente espera a primeira terminar e só
-// então vê corretamente que o livro não está mais disponível.
+// ── Checkout normal — cada livro com seu próprio prazo/preço ────────
+// items: [{ book_id, pricing_tier_id, renewal_days }, ...]
 export const useCheckout = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ bookIds, termsAccepted }) => {
+    mutationFn: async ({ items, termsAccepted, deliveryMethod = 'pickup', deliveryAddress = null }) => {
       if (!termsAccepted) throw new Error('É preciso aceitar os termos de locação.')
-      if (!bookIds?.length) throw new Error('Sacola vazia.')
-
-      // Usa os valores VIGENTES agora (configurados pelo admin em
-      // /admin/configuracoes) — congelados na própria locação pelo RPC.
-      const s = useSettingsStore.getState()
+      if (!items?.length) throw new Error('Sacola vazia.')
+      if (items.some((i) => !i.pricing_tier_id)) {
+        throw new Error('Escolha o prazo de locação para todos os livros.')
+      }
+      if (deliveryMethod === 'delivery' && !deliveryAddress?.trim()) {
+        throw new Error('Informe o endereço de entrega.')
+      }
 
       const { data, error } = await supabase.rpc('create_checkout', {
-        book_ids: bookIds,
-        rental_days_input: s.rentalDays,
-        daily_fine_input: s.dailyFine,
-        damage_fee_input: s.damageFee,
-        loss_fee_input: s.lossFee,
+        items,
+        delivery_method: deliveryMethod,
+        delivery_address: deliveryAddress,
       })
       if (error) throw error
       return data
@@ -76,22 +73,53 @@ export const useCheckout = () => {
   })
 }
 
-// Checkout assistido pelo admin — locação registrada no balcão, em nome
-// de outro leitor. Mesma trava atômica do checkout normal.
+// ── Checkout combo — N livros por preço fixo total ──────────────────
+export const useComboCheckout = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      comboPlanId,
+      bookIds,
+      termsAccepted,
+      renewalDays = 0,
+      deliveryMethod = 'pickup',
+      deliveryAddress = null,
+    }) => {
+      if (!termsAccepted) throw new Error('É preciso aceitar os termos de locação.')
+      if (!bookIds?.length) throw new Error('Selecione os livros do combo.')
+      if (deliveryMethod === 'delivery' && !deliveryAddress?.trim()) {
+        throw new Error('Informe o endereço de entrega.')
+      }
+
+      const { data, error } = await supabase.rpc('create_combo_checkout', {
+        combo_plan_id_input: comboPlanId,
+        book_ids: bookIds,
+        renewal_days_input: renewalDays,
+        delivery_method: deliveryMethod,
+        delivery_address: deliveryAddress,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rentals'] })
+      qc.invalidateQueries({ queryKey: ['books'] })
+    },
+  })
+}
+
+// Checkout assistido pelo admin — locação registrada no balcão
 export const useAdminCheckout = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ targetUserId, bookIds }) => {
-      if (!bookIds?.length) throw new Error('Selecione ao menos um livro.')
-      const s = useSettingsStore.getState()
+    mutationFn: async ({ targetUserId, items, deliveryMethod = 'pickup', deliveryAddress = null }) => {
+      if (!items?.length) throw new Error('Selecione ao menos um livro.')
 
       const { data, error } = await supabase.rpc('admin_checkout', {
         target_user_id: targetUserId,
-        book_ids: bookIds,
-        rental_days_input: s.rentalDays,
-        daily_fine_input: s.dailyFine,
-        damage_fee_input: s.damageFee,
-        loss_fee_input: s.lossFee,
+        items,
+        delivery_method: deliveryMethod,
+        delivery_address: deliveryAddress,
       })
       if (error) throw error
       return data
@@ -105,8 +133,7 @@ export const useAdminCheckout = () => {
 }
 
 // Admin cria um leitor novo (locação no balcão, sem a pessoa passar pelo
-// cadastro sozinha) — via Edge Function com chave de serviço, já que criar
-// um usuário de autenticação não é algo que a chave anon pode fazer.
+// cadastro sozinha) — via Edge Function com chave de serviço.
 export const useCreateReaderByAdmin = () => {
   const qc = useQueryClient()
   return useMutation({
@@ -129,9 +156,7 @@ export const useCreateReaderByAdmin = () => {
   })
 }
 
-// Promover leitor a administrador (a policy de RLS já permite; só falta a
-// ação na interface). Ação sensível — o formulário chama isso só depois
-// de confirmação explícita.
+// Promover leitor a administrador
 export const usePromoteToAdmin = () => {
   const qc = useQueryClient()
   return useMutation({
@@ -151,49 +176,18 @@ export const usePromoteToAdmin = () => {
     },
   })
 }
-// Auditoria de devolução (admin)
+
+// ── Devolução — condição granular (ok / dano leve / capa arrancada / perdido)
 export const useReturnBook = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ rentalId, condition, fee = 0, notes = '' }) => {
-      const statusMap = {
-        ok: 'returned',
-        damaged: 'damaged',
-        lost: 'lost',
-      }
-
-      const { data: rental, error: fetchErr } = await supabase
-        .from('rentals')
-        .select('book_id, due_date, daily_fine_rate')
-        .eq('id', rentalId)
-        .single()
-      if (fetchErr) throw fetchErr
-
-      // Calcula multa por atraso
-      const now = new Date()
-      const due = new Date(rental.due_date)
-      const daysLate = Math.max(0, Math.floor((now - due) / (1000 * 60 * 60 * 24)))
-      const lateFee = daysLate * (rental.daily_fine_rate || RENTAL_CONFIG.dailyFine)
-
-      const { data, error } = await supabase
-        .from('rentals')
-        .update({
-          returned_at: now.toISOString(),
-          status: statusMap[condition],
-          late_fee: lateFee,
-          damage_fee: fee,
-          notes,
-        })
-        .eq('id', rentalId)
-        .select()
-        .single()
+    mutationFn: async ({ rentalId, condition, notes = '' }) => {
+      const { data, error } = await supabase.rpc('process_return', {
+        rental_id_input: rentalId,
+        condition,
+        admin_notes: notes || null,
+      })
       if (error) throw error
-
-      // Incrementa cópias disponíveis apenas se não foi perdido
-      if (condition !== 'lost') {
-        await supabase.rpc('increment_available_copies', { book_id_input: rental.book_id })
-      }
-
       return data
     },
     onSuccess: () => {
@@ -236,14 +230,15 @@ export const useAdminStats = () => {
 }
 
 // ── Renovação de empréstimo ──────────────────────────────────────
+// Por padrão usa os dias de renovação escolhidos pelo leitor no checkout
+// (rental.renewal_days) — só passe extensionDays pra sobrepor manualmente.
 export const useRenewRental = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ rentalId, extensionDays }) => {
-      const days = extensionDays ?? useSettingsStore.getState().rentalDays
+    mutationFn: async ({ rentalId, extensionDays } = {}) => {
       const { data, error } = await supabase.rpc('renew_rental', {
         rental_id_input: rentalId,
-        extension_days: days,
+        extension_days: extensionDays ?? null,
       })
       if (error) throw error
       return data
@@ -254,15 +249,23 @@ export const useRenewRental = () => {
   })
 }
 
-// ── Registrar pagamento de multa (admin) ─────────────────────────
+// ── Registrar pagamento — multa, dano/reposição e/ou o preço do aluguel
 export const useRegisterPayment = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: async ({ rentalId, payLate = true, payDamage = true, method = 'cash', notes }) => {
+    mutationFn: async ({
+      rentalId,
+      payLate = true,
+      payDamage = true,
+      payRental = false,
+      method = 'cash',
+      notes,
+    }) => {
       const { data, error } = await supabase.rpc('register_payment', {
         rental_id_input: rentalId,
         pay_late: payLate,
         pay_damage: payDamage,
+        pay_rental: payRental,
         method,
         notes_input: notes || null,
       })

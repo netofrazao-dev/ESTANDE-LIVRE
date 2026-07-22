@@ -81,7 +81,8 @@ Abra o **SQL Editor** do seu projeto Supabase e execute, **nesta ordem exata**
 5. `supabase/migration_v3.sql` — congela valores do contrato por locação + consentimento LGPD
 6. `supabase/migration_v4.sql` — tabela de configurações do sistema (editável pelo admin, sem redeploy)
 7. `supabase/migration_v5.sql` — checkout atômico (corrige corrida de disponibilidade) + locação no balcão
-8. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
+8. `supabase/migration_v6.sql` — planos de preço por livro, multa normal/reservada, dano granular, combos
+9. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
 
 ### 3.1 Deploy da Edge Function de notificações (opcional, mas recomendado)
 
@@ -223,6 +224,7 @@ Funções RPC:
 | `/privacidade` | Política de Privacidade (LGPD) | público |
 | `/admin` | Dashboard admin | admin |
 | `/admin/nova-locacao` | Registrar locação no balcão (leitor sem site) | admin |
+| `/admin/planos-de-preco` | Planos de preço, prazos, multas e combos | admin |
 | `/admin/livros` | CRUD acervo | admin |
 | `/admin/emprestimos` | Todos os aluguéis + registro de pagamento | admin |
 | `/admin/devolucoes` | Fluxo de auditoria | admin |
@@ -422,6 +424,62 @@ autenticação). Mesma trava de disponibilidade do checkout normal.
 Em `/admin/leitores/:id`, botão "Tornar administrador" — a regra de RLS já
 permitia essa ação, só faltava o botão na interface. Pede confirmação
 explícita, já que dá acesso completo ao backoffice.
+
+---
+
+## Sistema de precificação (planos, prazos, multas e combos)
+
+A partir da `migration_v6.sql`, o modelo de negócio mudou de "empréstimo grátis
+com multa só se atrasar" para **locação paga**, com regras bem mais
+detalhadas:
+
+### Como funciona
+
+- Cada livro pertence a um **plano de preço** (`/admin/planos-de-preco`) —
+  ex.: "Padrão" ou "Especial — Tolkien & C. S. Lewis"
+- Cada plano tem várias opções de **prazo** (dias → preço → multa normal →
+  multa "reservado")
+- No checkout, o cliente escolhe o prazo de cada livro individualmente
+- Existe também um **combo** opcional (ex.: 3 livros por 30 dias por R$50) —
+  aparece automaticamente no checkout quando o carrinho bate com o tamanho
+  do combo ativo
+
+### Multa normal vs. "reservado"
+
+Se outro leitor estiver na fila de espera daquele livro no momento do
+atraso, aplica-se a multa **maior** ("reservado") em vez da normal — checado
+automaticamente, sem ação manual do admin.
+
+### Dano e extravio
+
+Devolução agora tem 4 condições, não mais 3:
+- **Em bom estado** — volta ao acervo, sem cobrança
+- **Dano leve na capa** — taxa fixa (Configurações), volta ao acervo
+- **Capa arrancada** — valor de reposição do livro + taxa administrativa,
+  sai do acervo
+- **Extraviado** — mesma cobrança de capa arrancada, sai do acervo
+
+O **valor de reposição** é cadastrado por livro, em Acervo. Sem ele
+cadastrado, o sistema cobra só a taxa administrativa (avisa isso na tela).
+
+### A multa não trava mais na devolução
+
+Diferente do modelo anterior: se o livro foi devolvido danificado ou
+extraviado, a multa de atraso **continua contando dia a dia** até você
+registrar o pagamento completo (preço + multa + reposição) — é aí que ela
+trava de vez. Isso é intencional: reflete que a pendência do leitor com a
+locadora continua em aberto até quitar tudo.
+
+### ⚠️ Valores semeados — REVISE
+
+O documento de regras que você me passou trouxe **exemplos** de valores
+(multas, preços), não um mapeamento exato de qual número vai em qual prazo.
+Eu tive que decidir um pareamento razoável pra você já sair testando, mas
+**esses números são um ponto de partida, não a versão final** — confira e
+ajuste em `/admin/planos-de-preco` e `/admin/configuracoes` antes de valer
+pra clientes de verdade. Livros já cadastrados foram automaticamente
+atribuídos ao plano "Padrão" — troque manualmente os que são especiais
+(Tolkien, C. S. Lewis, etc.) em Acervo.
 
 ---
 

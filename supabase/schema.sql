@@ -8,8 +8,18 @@ create extension if not exists "uuid-ossp";
 create extension if not exists "pgcrypto";
 
 -- ── Enums ──────────────────────────────────────────────────────────
-create type user_role as enum ('user', 'admin');
-create type rental_status as enum ('active', 'returned', 'damaged', 'lost');
+-- Envolvido em bloco DO com captura de exceção porque o Postgres não
+-- tem "CREATE TYPE IF NOT EXISTS" — sem isso, rodar o script uma segunda
+-- vez quebra com "type already exists".
+do $$ begin
+  create type user_role as enum ('user', 'admin');
+exception when duplicate_object then null;
+end $$;
+
+do $$ begin
+  create type rental_status as enum ('active', 'returned', 'damaged', 'lost');
+exception when duplicate_object then null;
+end $$;
 
 -- ═══════════════════════════════════════════════════════════════════
 -- Tabela: profiles

@@ -1,12 +1,14 @@
 import { Link } from 'react-router-dom'
 import { BookMarked, Library, AlertTriangle, TrendingUp, ArrowRight, CircleDollarSign, PlusCircle } from 'lucide-react'
 import { useAdminStats, useAllRentals } from '@/hooks/useRentals'
-import { formatDatador, calculateFine, formatMoney } from '@/lib/utils'
+import { formatDatador, computeRentalFine, formatMoney } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 
 export default function AdminDashboard() {
   const { data: stats } = useAdminStats()
   const { data: activeRentals = [] } = useAllRentals({ status: 'active' })
+  const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
 
   const lateRentals = activeRentals
     .filter((r) => new Date(r.due_date) < new Date())
@@ -75,7 +77,7 @@ export default function AdminDashboard() {
         ) : (
           <div className="space-y-2">
             {lateRentals.map((r) => {
-              const fine = calculateFine(r.due_date, new Date(), r.daily_fine_rate)
+              const fine = computeRentalFine(r, waitlistSet.has(r.book_id))
               return (
                 <div
                   key={r.id}

@@ -5,7 +5,8 @@ import { ArrowLeft, BookOpen, User, Mail, Phone, CircleDollarSign, Shield } from
 import { useReaderStats, useReaderRentals, usePromoteToAdmin } from '@/hooks/useRentals'
 import { supabase } from '@/lib/supabase'
 import { useQuery } from '@tanstack/react-query'
-import { calculateFine, formatDatador, formatMoney, rentalStatusLabel, cn } from '@/lib/utils'
+import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel, cn } from '@/lib/utils'
+import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 import FinePaymentModal from '@/components/admin/FinePaymentModal'
 import Modal from '@/components/ui/Modal'
 import Button from '@/components/ui/Button'
@@ -28,6 +29,7 @@ export default function AdminReaderDetail() {
   const { data: profile } = useReaderProfile(id)
   const { data: stats } = useReaderStats(id)
   const { data: rentals = [], isLoading } = useReaderRentals(id)
+  const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
   const [paying, setPaying] = useState(null)
   const [confirmingAdmin, setConfirmingAdmin] = useState(false)
   const promoteToAdmin = usePromoteToAdmin()
@@ -122,12 +124,13 @@ export default function AdminReaderDetail() {
       ) : (
         <div className="border border-sepia/15 bg-pergaminho divide-y divide-sepia/10">
           {rentals.map((r) => {
-            const isActive = r.status === 'active'
-            const fine = isActive ? calculateFine(r.due_date, new Date(), r.daily_fine_rate) : { amount: 0, isLate: false }
-            const totalFee = isActive ? fine.amount : (r.late_fee || 0) + (r.damage_fee || 0)
+            const hasReservation = waitlistSet.has(r.book_id)
+            const fine = computeRentalFine(r, hasReservation)
+            const totalFee = (r.price || 0) + fine.amount + (r.damage_fee || 0)
             const owesDebt =
-              !isActive &&
-              ((r.late_fee > 0 && !r.late_fee_paid) || (r.damage_fee > 0 && !r.damage_fee_paid))
+              (r.price > 0 && !r.rental_paid) ||
+              (r.late_fee > 0 && !r.late_fee_paid) ||
+              (r.damage_fee > 0 && !r.damage_fee_paid)
 
             return (
               <div key={r.id} className="flex items-center gap-4 px-4 py-3">

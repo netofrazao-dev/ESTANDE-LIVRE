@@ -12,6 +12,10 @@ export const useSettingsStore = create((set, get) => ({
   dailyFine: ENV_DEFAULTS.dailyFine,
   damageFee: ENV_DEFAULTS.damageFee,
   lossFee: ENV_DEFAULTS.lossFee,
+  minorDamageFee: 20,
+  lostAdminFee: 15,
+  comboDailyFineNormal: 1.75,
+  comboDailyFineReserved: 2.65,
   storeName: 'Estande Livre',
   storeAddress: '',
   storePhone: '',
@@ -28,6 +32,10 @@ export const useSettingsStore = create((set, get) => ({
       dailyFine: Number(data.daily_fine),
       damageFee: Number(data.damage_fee),
       lossFee: Number(data.loss_fee),
+      minorDamageFee: Number(data.minor_damage_fee ?? 20),
+      lostAdminFee: Number(data.lost_admin_fee ?? 15),
+      comboDailyFineNormal: Number(data.combo_daily_fine_normal ?? 1.75),
+      comboDailyFineReserved: Number(data.combo_daily_fine_reserved ?? 2.65),
       storeName: data.store_name || 'Estande Livre',
       storeAddress: data.store_address || '',
       storePhone: data.store_phone || '',
@@ -45,6 +53,10 @@ export const useSettingsStore = create((set, get) => ({
     if (patch.dailyFine !== undefined) dbPatch.daily_fine = patch.dailyFine
     if (patch.damageFee !== undefined) dbPatch.damage_fee = patch.damageFee
     if (patch.lossFee !== undefined) dbPatch.loss_fee = patch.lossFee
+    if (patch.minorDamageFee !== undefined) dbPatch.minor_damage_fee = patch.minorDamageFee
+    if (patch.lostAdminFee !== undefined) dbPatch.lost_admin_fee = patch.lostAdminFee
+    if (patch.comboDailyFineNormal !== undefined) dbPatch.combo_daily_fine_normal = patch.comboDailyFineNormal
+    if (patch.comboDailyFineReserved !== undefined) dbPatch.combo_daily_fine_reserved = patch.comboDailyFineReserved
     if (patch.storeName !== undefined) dbPatch.store_name = patch.storeName
     if (patch.storeAddress !== undefined) dbPatch.store_address = patch.storeAddress
     if (patch.storePhone !== undefined) dbPatch.store_phone = patch.storePhone

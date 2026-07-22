@@ -13,22 +13,26 @@ const methods = [
 
 export default function FinePaymentModal({ rental, onClose }) {
   const registerPayment = useRegisterPayment()
+  const [payRental, setPayRental] = useState((rental.price || 0) > 0 && !rental.rental_paid)
   const [payLate, setPayLate] = useState((rental.late_fee || 0) > 0 && !rental.late_fee_paid)
   const [payDamage, setPayDamage] = useState((rental.damage_fee || 0) > 0 && !rental.damage_fee_paid)
   const [method, setMethod] = useState('cash')
   const [notes, setNotes] = useState('')
 
   const total =
-    (payLate ? rental.late_fee || 0 : 0) + (payDamage ? rental.damage_fee || 0 : 0)
+    (payRental ? rental.price || 0 : 0) +
+    (payLate ? rental.late_fee || 0 : 0) +
+    (payDamage ? rental.damage_fee || 0 : 0)
 
   const handleConfirm = async () => {
-    if (!payLate && !payDamage) {
+    if (!payRental && !payLate && !payDamage) {
       toast.error('Selecione ao menos um item para dar baixa.')
       return
     }
     try {
       await registerPayment.mutateAsync({
         rentalId: rental.id,
+        payRental,
         payLate,
         payDamage,
         method,
@@ -63,6 +67,22 @@ export default function FinePaymentModal({ rental, onClose }) {
         </div>
 
         <div className="space-y-2">
+          {(rental.price || 0) > 0 && (
+            <label className="flex items-center justify-between gap-3 p-3 border border-sepia/20 cursor-pointer">
+              <span className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={payRental}
+                  disabled={rental.rental_paid}
+                  onChange={(e) => setPayRental(e.target.checked)}
+                  className="w-4 h-4 accent-musgo"
+                />
+                Preço do aluguel
+                {rental.rental_paid && <span className="text-[10px] text-musgo">(já pago)</span>}
+              </span>
+              <span className="font-mono tabular-nums">{formatMoney(rental.price)}</span>
+            </label>
+          )}
           {(rental.late_fee || 0) > 0 && (
             <label className="flex items-center justify-between gap-3 p-3 border border-sepia/20 cursor-pointer">
               <span className="flex items-center gap-2 text-sm">

@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAllRentals } from '@/hooks/useRentals'
-import { calculateFine, formatDatador, formatMoney, rentalStatusLabel } from '@/lib/utils'
+import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 import { AlertTriangle, CircleDollarSign } from 'lucide-react'
 import FinePaymentModal from '@/components/admin/FinePaymentModal'
 
@@ -20,6 +21,7 @@ export default function AdminRentals() {
   const { data: rentals = [], isLoading } = useAllRentals(
     statusFilter ? { status: statusFilter } : {},
   )
+  const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
 
   return (
     <div>
@@ -70,21 +72,20 @@ export default function AdminRentals() {
               <tr><td colSpan="7" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
             ) : (
               rentals.map((r) => {
-                const isActive = r.status === 'active'
-                const fine = isActive ? calculateFine(r.due_date, new Date(), r.daily_fine_rate) : { amount: 0, isLate: false }
-                const isReturnedWithDebt =
-                  !isActive &&
-                  ((r.late_fee > 0 && !r.late_fee_paid) || (r.damage_fee > 0 && !r.damage_fee_paid))
-                const totalFee = isActive
-                  ? fine.amount
-                  : (r.late_fee || 0) + (r.damage_fee || 0)
+                const hasReservation = waitlistSet.has(r.book_id)
+                const fine = computeRentalFine(r, hasReservation)
+                const hasPendingAmount =
+                  (r.price > 0 && !r.rental_paid) ||
+                  (r.late_fee > 0 && !r.late_fee_paid) ||
+                  (r.damage_fee > 0 && !r.damage_fee_paid)
+                const totalFee = (r.price || 0) + fine.amount + (r.damage_fee || 0)
 
                 return (
                   <tr
                     key={r.id}
                     className={cn(
                       'hover:bg-pergaminho-dark/20 transition-colors',
-                      (fine.isLate || isReturnedWithDebt) && 'bg-terracota/5',
+                      (fine.isLate || hasPendingAmount) && 'bg-terracota/5',
                     )}
                   >
                     <td className="px-4 py-3">
@@ -125,16 +126,16 @@ export default function AdminRentals() {
                     <td className="px-4 py-3 text-right">
                       <span className={cn(
                         'font-mono text-sm tabular-nums',
-                        totalFee > 0 ? (isReturnedWithDebt ? 'text-terracota' : 'text-cafe/40') : 'text-cafe/40',
+                        totalFee > 0 ? (hasPendingAmount ? 'text-terracota' : 'text-cafe/40') : 'text-cafe/40',
                       )}>
                         {formatMoney(totalFee)}
                       </span>
-                      {!isActive && totalFee > 0 && !isReturnedWithDebt && (
+                      {totalFee > 0 && !hasPendingAmount && (
                         <div className="text-[9px] text-musgo">quitado</div>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
-                      {isReturnedWithDebt && (
+                      {hasPendingAmount && (
                         <button
                           onClick={() => setPaying(r)}
                           className="p-2 text-sepia hover:text-musgo transition-colors"

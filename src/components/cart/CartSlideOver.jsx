@@ -4,16 +4,13 @@ import { Link, useNavigate } from 'react-router-dom'
 import { useCartStore } from '@/stores/cartStore'
 import { useAuthStore } from '@/stores/authStore'
 import { useSettingsStore } from '@/stores/settingsStore'
-import { formatDatador, previewDueDate } from '@/lib/utils'
 import Button from '../ui/Button'
 
 export default function CartSlideOver() {
   const { isOpen, close, items, removeBook } = useCartStore()
   const user = useAuthStore((s) => s.user)
-  const { maxBooksPerRental, rentalDays, dailyFine } = useSettingsStore()
+  const { maxBooksPerRental } = useSettingsStore()
   const navigate = useNavigate()
-
-  const dueDate = previewDueDate(rentalDays)
 
   const handleCheckout = () => {
     close()
@@ -116,22 +113,19 @@ export default function CartSlideOver() {
               )}
             </div>
 
-            {/* Rodapé com previsão de devolução */}
+            {/* Rodapé */}
             {items.length > 0 && (
               <div className="border-t border-sepia/15 p-6 space-y-4 bg-pergaminho-dark/30">
                 <div className="ficha">
-                  <div className="eyebrow mb-2">Previsão de devolução</div>
-                  <div className="font-mono text-lg text-cafe tabular-nums">
-                    {formatDatador(dueDate)}
-                  </div>
-                  <p className="text-[11px] text-cafe/60 mt-2 text-pretty">
-                    Prazo de {rentalDays} dias corridos.
-                    Após esta data, multa de R$ {dailyFine.toFixed(2).replace('.', ',')} por dia.
+                  <div className="eyebrow mb-2">Próximo passo</div>
+                  <p className="text-sm text-cafe/70 text-pretty">
+                    No próximo passo você escolhe o prazo e o preço de cada livro, e finaliza
+                    a locação.
                   </p>
                 </div>
 
                 <Button onClick={handleCheckout} className="w-full">
-                  Ir para o termo de locação
+                  Ir para o checkout
                   <ArrowRight className="w-4 h-4" />
                 </Button>
               </div>

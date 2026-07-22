@@ -68,6 +68,55 @@ export const daysUntilDue = (dueDate) => {
   return differenceInCalendarDays(due, new Date())
 }
 
+/**
+ * Calcula a multa de uma locação, escolhendo automaticamente entre a taxa
+ * normal e a taxa "reservado" (quando há fila de espera ativa pro livro),
+ * e respeitando o congelamento de status danificado/perdido ainda não
+ * resolvido (a multa continua contando até hoje enquanto não for pago).
+ *
+ * @param {object} rental — linha de rentals (precisa de due_date, status,
+ *   daily_fine_normal, daily_fine_reserved, fine_used_reserved_rate,
+ *   late_fee, resolved_at, returned_at)
+ * @param {boolean} hasActiveReservation — só é usado quando status='active'
+ */
+export const computeRentalFine = (rental, hasActiveReservation = false) => {
+  if (!rental?.due_date) return { daysLate: 0, amount: 0, isLate: false }
+  const due = typeof rental.due_date === 'string' ? parseISO(rental.due_date) : rental.due_date
+
+  // Devolvido limpo: valor já congelado no momento da devolução.
+  if (rental.status === 'returned') {
+    const amount = rental.late_fee || 0
+    return {
+      daysLate: rental.returned_at ? Math.max(0, differenceInCalendarDays(parseISO(rental.returned_at), due)) : 0,
+      amount,
+      isLate: amount > 0,
+    }
+  }
+
+  // Danificado/perdido: se já resolvido (pago), valor travado; senão,
+  // continua contando até hoje.
+  if (rental.status === 'damaged' || rental.status === 'lost') {
+    if (rental.resolved_at) {
+      const amount = rental.late_fee || 0
+      return {
+        daysLate: Math.max(0, differenceInCalendarDays(parseISO(rental.resolved_at), due)),
+        amount,
+        isLate: amount > 0,
+      }
+    }
+    const rate = rental.fine_used_reserved_rate
+      ? (rental.daily_fine_reserved ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
+      : (rental.daily_fine_normal ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
+    return calculateFine(due, new Date(), rate)
+  }
+
+  // Ativo: calcula ao vivo, escolhendo a taxa conforme reserva atual.
+  const rate = hasActiveReservation
+    ? (rental.daily_fine_reserved ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
+    : (rental.daily_fine_normal ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
+  return calculateFine(due, new Date(), rate)
+}
+
 // Prevê data de devolução a partir de hoje
 export const previewDueDate = (rentalDays = RENTAL_CONFIG.rentalDays) => {
   return addDays(new Date(), rentalDays)

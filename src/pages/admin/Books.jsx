@@ -3,11 +3,12 @@ import { Plus, Pencil, Trash2, Search, BookOpen } from 'lucide-react'
 import toast from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
 import { useBooks, useSaveBook, useDeleteBook, useCategories } from '@/hooks/useBooks'
+import { usePricingPlans } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
-import { slugify } from '@/lib/utils'
+import { slugify, formatMoney } from '@/lib/utils'
 
 const emptyBook = {
   title: '',
@@ -18,6 +19,8 @@ const emptyBook = {
   pages: '',
   language: 'Português',
   category_id: '',
+  pricing_plan_id: '',
+  replacement_value: '',
   cover_url: '',
   total_copies: 1,
   available_copies: 1,
@@ -32,6 +35,7 @@ export default function AdminBooks() {
 
   const { data: books = [], isLoading } = useBooks({ search })
   const { data: categories = [] } = useCategories()
+  const { data: pricingPlans = [] } = usePricingPlans()
   const saveBook = useSaveBook()
   const deleteBook = useDeleteBook()
 
@@ -46,6 +50,8 @@ export default function AdminBooks() {
         pages: book.pages ? Number(book.pages) : null,
         total_copies: Number(book.total_copies) || 1,
         available_copies: Number(book.available_copies) || 0,
+        replacement_value: Number(book.replacement_value) || 0,
+        pricing_plan_id: book.pricing_plan_id || null,
       }
       await saveBook.mutateAsync(payload)
       toast.success(book.id ? 'Livro atualizado.' : 'Livro catalogado.')
@@ -98,15 +104,16 @@ export default function AdminBooks() {
             <tr>
               <th className="text-left px-4 py-3 eyebrow">Livro</th>
               <th className="text-left px-4 py-3 eyebrow">Categoria</th>
+              <th className="text-left px-4 py-3 eyebrow">Plano de preço</th>
               <th className="text-right px-4 py-3 eyebrow">Cópias</th>
               <th className="text-right px-4 py-3 eyebrow w-32">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sepia/10">
             {isLoading ? (
-              <tr><td colSpan="4" className="text-center py-10 text-sepia">Carregando…</td></tr>
+              <tr><td colSpan="5" className="text-center py-10 text-sepia">Carregando…</td></tr>
             ) : books.length === 0 ? (
-              <tr><td colSpan="4" className="text-center py-10 text-sepia">Nenhum título encontrado.</td></tr>
+              <tr><td colSpan="5" className="text-center py-10 text-sepia">Nenhum título encontrado.</td></tr>
             ) : (
               books.map((book) => (
                 <tr key={book.id} className="hover:bg-pergaminho-dark/20 transition-colors">
@@ -129,6 +136,11 @@ export default function AdminBooks() {
                   </td>
                   <td className="px-4 py-3 text-xs text-cafe/70">
                     {book.category?.name || '—'}
+                  </td>
+                  <td className="px-4 py-3 text-xs text-cafe/70">
+                    {book.pricing_plan?.name || (
+                      <span className="text-terracota">sem plano</span>
+                    )}
                   </td>
                   <td className="px-4 py-3 text-right font-mono tabular-nums text-xs">
                     <span className={book.available_copies > 0 ? 'text-musgo' : 'text-terracota'}>
@@ -166,6 +178,7 @@ export default function AdminBooks() {
         <BookForm
           book={editing}
           categories={categories}
+          pricingPlans={pricingPlans}
           onCancel={() => setEditing(null)}
           onSave={handleSave}
           saving={saveBook.isPending}
@@ -196,7 +209,7 @@ export default function AdminBooks() {
 }
 
 // ── Formulário de livro ──────────────────────────────────────────
-function BookForm({ book, categories, onCancel, onSave, saving }) {
+function BookForm({ book, categories, pricingPlans, onCancel, onSave, saving }) {
   const [form, setForm] = useState(book)
   const [uploading, setUploading] = useState(false)
 
@@ -299,6 +312,39 @@ function BookForm({ book, categories, onCancel, onSave, saving }) {
               </select>
             </div>
             <Input label="Nº de tombo" value={form.catalog_number || ''} onChange={update('catalog_number')} />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="eyebrow block mb-2">Plano de preço</label>
+              <select
+                value={form.pricing_plan_id || ''}
+                onChange={update('pricing_plan_id')}
+                className="input-boxed"
+              >
+                <option value="">— sem plano (não pode ser alugado) —</option>
+                {pricingPlans.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name}</option>
+                ))}
+              </select>
+              {form.pricing_plan_id && (
+                <p className="text-[11px] text-sepia mt-1.5">
+                  {pricingPlans
+                    .find((p) => p.id === form.pricing_plan_id)
+                    ?.tiers.map((t) => `${t.days}d/${formatMoney(t.price)}`)
+                    .join(' · ') || 'Plano sem prazos cadastrados ainda'}
+                </p>
+              )}
+            </div>
+            <Input
+              label="Valor de reposição (R$)"
+              type="number"
+              min={0}
+              step="0.01"
+              value={form.replacement_value}
+              onChange={update('replacement_value')}
+              hint="Cobrado em caso de perda ou capa arrancada"
+            />
           </div>
 
           <div className="grid grid-cols-3 gap-4">
