@@ -21,9 +21,11 @@
 # uma versão mais antiga do pg_dump recusa conectar em servidor mais
 # novo que ele):
 #   macOS:   brew install libpq@17 && brew link --force libpq@17
-#   Ubuntu:  sudo apt-get install postgresql-common && \
-#            sudo /usr/share/postgresql-common/pgdg/apt.postgresqlorg.sh -y && \
-#            sudo apt-get install postgresql-client-17
+#   Ubuntu:  sudo install -d /usr/share/postgresql-common/pgdg && \
+#            sudo curl -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc \
+#              --fail https://www.postgresql.org/media/keys/ACCC4CF8.asc && \
+#            sudo sh -c 'echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(. /etc/os-release && echo $VERSION_CODENAME)-pgdg main" > /etc/apt/sources.list.d/pgdg.list' && \
+#            sudo apt-get update && sudo apt-get install -y postgresql-client-17
 # ═══════════════════════════════════════════════════════════════════
 
 set -euo pipefail
