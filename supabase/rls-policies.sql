@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Row Level Security (RLS)
+-- ESTANTE LIVRE — Row Level Security (RLS)
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Habilita RLS em todas as tabelas

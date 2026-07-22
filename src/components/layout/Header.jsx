@@ -26,7 +26,7 @@ export default function Header() {
             <BookMarked className="w-6 h-6 text-cafe group-hover:text-musgo transition-colors" />
           </div>
           <div>
-            <div className="font-display text-xl leading-none text-cafe">Estande Livre</div>
+            <div className="font-display text-xl leading-none text-cafe">Estante Livre</div>
             <div className="eyebrow mt-0.5">Locadora · desde 2026</div>
           </div>
         </Link>

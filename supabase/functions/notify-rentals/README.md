@@ -22,8 +22,8 @@ supabase link --project-ref SEU_PROJECT_REF
 
 # Configure os secrets
 supabase secrets set RESEND_API_KEY=re_xxxx
-supabase secrets set EMAIL_FROM="Estande Livre <contato@seu-dominio.com>"
-supabase secrets set SITE_URL="https://estandelivre.com.br"
+supabase secrets set EMAIL_FROM="Estante Livre <contato@seu-dominio.com>"
+supabase secrets set SITE_URL="https://estantelivre.com.br"
 
 # Deploy
 supabase functions deploy notify-rentals

@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Seed data
+-- ESTANTE LIVRE — Seed data
 -- Categorias iniciais e alguns livros de exemplo
 -- ═══════════════════════════════════════════════════════════════════
 

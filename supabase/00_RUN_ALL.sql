@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — SCRIPT ÚNICO DE SETUP DO BANCO
+-- ESTANTE LIVRE — SCRIPT ÚNICO DE SETUP DO BANCO
 -- ═══════════════════════════════════════════════════════════════════
 --
 -- Cole este arquivo INTEIRO no SQL Editor do Supabase e rode de uma vez.
@@ -44,7 +44,7 @@
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Schema completo
+-- ESTANTE LIVRE — Schema completo
 -- Postgres/Supabase
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -280,7 +280,7 @@ on conflict (id) do nothing;
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Row Level Security (RLS)
+-- ESTANTE LIVRE — Row Level Security (RLS)
 -- ═══════════════════════════════════════════════════════════════════
 
 -- Habilita RLS em todas as tabelas
@@ -413,7 +413,7 @@ create policy "book_covers_admin_delete"
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v2
+-- ESTANTE LIVRE — Migração v2
 -- Reservas · Renovações · Pagamentos · Notificações · Histórico
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -847,7 +847,7 @@ $$;
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — RLS v2 (novas tabelas)
+-- ESTANTE LIVRE — RLS v2 (novas tabelas)
 -- ═══════════════════════════════════════════════════════════════════
 
 alter table public.reservations enable row level security;
@@ -891,7 +891,7 @@ create policy "notifications_admin_all"
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v3
+-- ESTANTE LIVRE — Migração v3
 -- Congelamento dos termos do contrato · Consentimento LGPD
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -946,7 +946,7 @@ $$;
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v4
+-- ESTANTE LIVRE — Migração v4
 -- Configurações do sistema (editáveis pelo admin, sem precisar de deploy)
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -957,7 +957,7 @@ create table if not exists public.settings (
   daily_fine numeric(10,2) default 2.00 not null,
   damage_fee numeric(10,2) default 50.00 not null,
   loss_fee numeric(10,2) default 150.00 not null,
-  store_name text default 'Estande Livre' not null,
+  store_name text default 'Estante Livre' not null,
   store_address text,
   store_phone text,
   store_hours text,
@@ -1001,7 +1001,7 @@ create policy "settings_admin_write"
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v5
+-- ESTANTE LIVRE — Migração v5
 -- Checkout atômico (corrige corrida de disponibilidade) · Locação no balcão
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -1148,7 +1148,7 @@ $$;
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v6
+-- ESTANTE LIVRE — Migração v6
 -- Planos de preço · Multa normal/reservada · Dano granular · Entrega
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -1892,7 +1892,7 @@ where (
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Seed data
+-- ESTANTE LIVRE — Seed data
 -- Categorias iniciais e alguns livros de exemplo
 -- ═══════════════════════════════════════════════════════════════════
 

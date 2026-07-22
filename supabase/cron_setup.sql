@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Agendamento da notificação diária (pg_cron)
+-- ESTANTE LIVRE — Agendamento da notificação diária (pg_cron)
 -- ═══════════════════════════════════════════════════════════════════
 --
 -- Pré-requisitos:

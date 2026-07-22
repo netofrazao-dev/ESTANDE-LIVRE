@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — RLS v2 (novas tabelas)
+-- ESTANTE LIVRE — RLS v2 (novas tabelas)
 -- ═══════════════════════════════════════════════════════════════════
 
 alter table public.reservations enable row level security;

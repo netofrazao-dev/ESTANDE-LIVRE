@@ -50,6 +50,6 @@ export const useCartStore = create(
       count: () => get().items.length,
       isFull: () => get().items.length >= useSettingsStore.getState().maxBooksPerRental,
     }),
-    { name: 'estande-livre-cart' },
+    { name: 'estante-livre-cart' },
   ),
 )

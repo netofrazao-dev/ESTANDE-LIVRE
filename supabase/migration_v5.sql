@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v5
+-- ESTANTE LIVRE — Migração v5
 -- Checkout atômico (corrige corrida de disponibilidade) · Locação no balcão
 -- ═══════════════════════════════════════════════════════════════════
 

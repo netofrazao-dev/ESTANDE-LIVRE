@@ -280,11 +280,11 @@ export default function Checkout() {
               <ShieldCheck className="w-8 h-8 text-sepia" />
             </div>
             <div className="eyebrow mb-2">Contrato civil de comodato</div>
-            <h2 className="font-display text-2xl mb-6">Estande Livre · Termo de Locação</h2>
+            <h2 className="font-display text-2xl mb-6">Estante Livre · Termo de Locação</h2>
             <div className="rule-double mb-6" />
             <div className="space-y-4 text-sm leading-relaxed text-cafe/85 text-pretty">
               <p>
-                Entre <strong>Estande Livre — Locadora de Livros</strong>, doravante <em>LOCADORA</em>,
+                Entre <strong>Estante Livre — Locadora de Livros</strong>, doravante <em>LOCADORA</em>,
                 e <strong>{profile?.full_name || user?.email}</strong>, doravante <em>LOCATÁRIO</em>,
                 fica pactuado o seguinte:
               </p>

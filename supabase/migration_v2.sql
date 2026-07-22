@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v2
+-- ESTANTE LIVRE — Migração v2
 -- Reservas · Renovações · Pagamentos · Notificações · Histórico
 -- ═══════════════════════════════════════════════════════════════════
 

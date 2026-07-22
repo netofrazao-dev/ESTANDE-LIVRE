@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v6
+-- ESTANTE LIVRE — Migração v6
 -- Planos de preço · Multa normal/reservada · Dano granular · Entrega
 -- ═══════════════════════════════════════════════════════════════════
 

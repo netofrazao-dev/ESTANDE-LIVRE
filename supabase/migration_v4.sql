@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v4
+-- ESTANTE LIVRE — Migração v4
 -- Configurações do sistema (editáveis pelo admin, sem precisar de deploy)
 -- ═══════════════════════════════════════════════════════════════════
 
@@ -10,7 +10,7 @@ create table if not exists public.settings (
   daily_fine numeric(10,2) default 2.00 not null,
   damage_fee numeric(10,2) default 50.00 not null,
   loss_fee numeric(10,2) default 150.00 not null,
-  store_name text default 'Estande Livre' not null,
+  store_name text default 'Estante Livre' not null,
   store_address text,
   store_phone text,
   store_hours text,

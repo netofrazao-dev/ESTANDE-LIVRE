@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
--- ESTANDE LIVRE — Migração v3
+-- ESTANTE LIVRE — Migração v3
 -- Congelamento dos termos do contrato · Consentimento LGPD
 -- ═══════════════════════════════════════════════════════════════════
 

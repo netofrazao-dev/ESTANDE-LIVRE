@@ -1,4 +1,4 @@
-# Estande Livre
+# Estante Livre
 
 Locadora de livros ponta a ponta: portal do leitor, contratos digitais, motor de multas em tempo real e backoffice administrativo. Uma biblioteca clássica, agora em código.
 
@@ -97,8 +97,8 @@ Instruções completas de deploy e agendamento (cron) estão em
 supabase login
 supabase link --project-ref SEU_PROJECT_REF
 supabase secrets set RESEND_API_KEY=re_xxxx
-supabase secrets set EMAIL_FROM="Estande Livre <contato@seu-dominio.com>"
-supabase secrets set SITE_URL="https://estandelivre.com.br"
+supabase secrets set EMAIL_FROM="Estante Livre <contato@seu-dominio.com>"
+supabase secrets set SITE_URL="https://estantelivre.com.br"
 supabase functions deploy notify-rentals
 ```
 
@@ -261,11 +261,11 @@ e-mail vão redirecionar para `localhost` mesmo em produção.
 
 No painel do Supabase → **Authentication → URL Configuration**:
 
-- **Site URL**: coloque o domínio final, ex. `https://estandelivre.com.br`
+- **Site URL**: coloque o domínio final, ex. `https://estantelivre.com.br`
 - **Redirect URLs**: adicione (uma por linha):
   ```
-  https://estandelivre.com.br/redefinir-senha
-  https://estandelivre.com.br/**
+  https://estantelivre.com.br/redefinir-senha
+  https://estantelivre.com.br/**
   ```
   O `/**` no final cobre qualquer rota do site como destino de redirecionamento pós-login.
 

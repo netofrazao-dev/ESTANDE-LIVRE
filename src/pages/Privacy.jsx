@@ -10,7 +10,7 @@ export default function Privacy() {
           <section>
             <h2 className="font-display text-xl mb-3">1. Quem somos</h2>
             <p className="text-pretty">
-              A Estande Livre é uma locadora de livros. Este documento explica quais dados
+              A Estante Livre é uma locadora de livros. Este documento explica quais dados
               coletamos de você, leitor, para que servem e como você pode exercer seus
               direitos sobre eles, em conformidade com a Lei Geral de Proteção de Dados
               (Lei nº 13.709/2018 — LGPD).

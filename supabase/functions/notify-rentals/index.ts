@@ -13,8 +13,8 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const resendApiKey = Deno.env.get('RESEND_API_KEY') // opcional
-const fromEmail = Deno.env.get('EMAIL_FROM') || 'Estande Livre <onboarding@resend.dev>'
-const siteUrl = Deno.env.get('SITE_URL') || 'https://estandelivre.com.br'
+const fromEmail = Deno.env.get('EMAIL_FROM') || 'Estante Livre <onboarding@resend.dev>'
+const siteUrl = Deno.env.get('SITE_URL') || 'https://estantelivre.com.br'
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
@@ -49,13 +49,13 @@ const emailShell = (title: string, body: string) => `
 <body style="font-family: Georgia, serif; background: #F9F6F0; color: #3E2723; padding: 40px 20px; margin: 0;">
   <div style="max-width: 560px; margin: 0 auto; background: #fff; border: 1px solid rgba(139, 111, 71, 0.2); padding: 40px;">
     <div style="font-size: 11px; letter-spacing: 0.25em; text-transform: uppercase; color: #8B6F47; margin-bottom: 8px;">
-      Estande Livre · locadora de livros
+      Estante Livre · locadora de livros
     </div>
     <h1 style="font-family: Georgia, serif; font-size: 28px; margin: 0 0 24px; line-height: 1.2;">${title}</h1>
     ${body}
     <hr style="border: none; border-top: 1px solid rgba(139, 111, 71, 0.2); margin: 32px 0;" />
     <p style="font-size: 12px; color: #8B6F47; margin: 0;">
-      Você recebeu este e-mail porque possui cadastro na Estande Livre.
+      Você recebeu este e-mail porque possui cadastro na Estante Livre.
       <br>
       <a href="${siteUrl}" style="color: #5A6E4A;">${siteUrl}</a>
     </p>
