@@ -463,7 +463,7 @@ declare
   applicable_rate numeric;
   has_reservation boolean;
   computed_late_fee numeric;
-  new_status text;
+  new_status public.rental_status;
   new_damage_fee numeric := 0;
 begin
   if not public.is_admin() then

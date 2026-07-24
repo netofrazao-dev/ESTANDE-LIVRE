@@ -4,7 +4,7 @@ import { useAllRentals } from '@/hooks/useRentals'
 import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
-import { AlertTriangle, CircleDollarSign } from 'lucide-react'
+import { AlertTriangle, CircleDollarSign, Store, Truck } from 'lucide-react'
 import FinePaymentModal from '@/components/admin/FinePaymentModal'
 
 const filters = [
@@ -53,7 +53,7 @@ export default function AdminRentals() {
 
       {/* Tabela */}
       <div className="border border-sepia/15 overflow-x-auto bg-pergaminho">
-        <table className="w-full text-sm min-w-[1000px]">
+        <table className="w-full text-sm min-w-[1150px]">
           <thead className="bg-pergaminho-dark/40 border-b border-sepia/15">
             <tr>
               <th className="text-left px-4 py-3 eyebrow">Leitor</th>
@@ -61,15 +61,16 @@ export default function AdminRentals() {
               <th className="text-left px-4 py-3 eyebrow">Retirado</th>
               <th className="text-left px-4 py-3 eyebrow">Devolver até</th>
               <th className="text-left px-4 py-3 eyebrow">Status</th>
+              <th className="text-left px-4 py-3 eyebrow">Entrega</th>
               <th className="text-right px-4 py-3 eyebrow">Multa</th>
               <th className="text-right px-4 py-3 eyebrow w-16">Ação</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sepia/10">
             {isLoading ? (
-              <tr><td colSpan="7" className="text-center py-10 text-sepia">Carregando…</td></tr>
+              <tr><td colSpan="8" className="text-center py-10 text-sepia">Carregando…</td></tr>
             ) : rentals.length === 0 ? (
-              <tr><td colSpan="7" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
+              <tr><td colSpan="8" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
             ) : (
               rentals.map((r) => {
                 const hasReservation = waitlistSet.has(r.book_id)
@@ -99,7 +100,12 @@ export default function AdminRentals() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="text-sm">{r.book?.title}</div>
-                      <div className="text-xs text-cafe/60">{r.book?.author}</div>
+                      <div className="text-xs text-cafe/60">
+                        {r.book?.author}
+                        {r.renewal_days > 0 && (
+                          <span className="text-sepia"> · renovação: {r.renewal_days}d</span>
+                        )}
+                      </div>
                     </td>
                     <td className="px-4 py-3 text-xs font-mono text-cafe/70 whitespace-nowrap">
                       {formatDatador(r.rented_at)}
@@ -121,6 +127,20 @@ export default function AdminRentals() {
                         </span>
                       ) : (
                         <span className="text-xs">{rentalStatusLabel(r.status)}</span>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      {r.delivery_method === 'delivery' ? (
+                        <span
+                          className="inline-flex items-center gap-1.5 text-xs text-cafe/80 cursor-help"
+                          title={r.delivery_address || 'Endereço não informado'}
+                        >
+                          <Truck className="w-3.5 h-3.5 text-sepia" /> Entrega
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 text-xs text-cafe/60">
+                          <Store className="w-3.5 h-3.5 text-sepia" /> Retirada
+                        </span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">

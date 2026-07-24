@@ -3,21 +3,7 @@
 -- ═══════════════════════════════════════════════════════════════════
 --
 -- Cole este arquivo INTEIRO no SQL Editor do Supabase e rode de uma vez.
--- Ele já contém, na ordem certa, tudo que foi construído até agora:
---
---   1) schema.sql          — tabelas, índices, triggers, funções base
---   2) rls-policies.sql    — segurança (Row Level Security)
---   3) migration_v2.sql    — reservas, renovação, pagamento de multa,
---                            notificações, estatísticas de leitor
---   4) rls-v2.sql          — segurança das tabelas novas do item 3
---   5) migration_v3.sql    — congela valores do contrato + LGPD
---   6) migration_v4.sql    — configurações do sistema editáveis
---   7) migration_v5.sql    — checkout atômico + locação no balcão
---   8) migration_v6.sql    — planos de preço, multa normal/reservada,
---                            dano granular, combos
---   9) seed.sql            — categorias e livros de exemplo (opcional,
---                            mas incluído aqui; não duplica nada se
---                            você rodar este script mais de uma vez)
+-- Ele já contém, na ordem certa, tudo que foi construído até agora.
 --
 -- Seguro rodar de novo? Sim — cada trecho usa "if not exists",
 -- "or replace", "on conflict do nothing", blocos DO com captura de
@@ -32,10 +18,9 @@
 --     project ref e service role key)
 --   - Configurações no painel (Site URL, SMTP, Captcha) — ver README.md
 --
--- ⚠️ ATENÇÃO — migration_v6.sql (item 8) semeia planos de preço com
--- valores de EXEMPLO, interpretados a partir de uma especificação que
--- não deixava 100% claro qual multa vai em qual prazo. Revise e ajuste
--- em /admin/planos-de-preco antes de valer pra clientes de verdade.
+-- ⚠️ ATENÇÃO — migration_v6.sql semeia planos de preço com valores de
+-- EXEMPLO. Revise e ajuste em /admin/planos-de-preco antes de valer
+-- pra clientes de verdade.
 -- ═══════════════════════════════════════════════════════════════════
 
 
@@ -1612,7 +1597,7 @@ declare
   applicable_rate numeric;
   has_reservation boolean;
   computed_late_fee numeric;
-  new_status text;
+  new_status public.rental_status;
   new_damage_fee numeric := 0;
 begin
   if not public.is_admin() then
@@ -1888,7 +1873,36 @@ where (
   );
 
 -- ┌─────────────────────────────────────────────────────────────────────┐
--- │ 9) seed.sql (opcional — categorias e livros de exemplo)        │
+-- │ 9) migration_v7.sql                                            │
+-- └─────────────────────────────────────────────────────────────────────┘
+
+-- ═══════════════════════════════════════════════════════════════════
+-- ESTANTE LIVRE — Migração v7
+-- WhatsApp e Instagram da loja
+-- ═══════════════════════════════════════════════════════════════════
+
+alter table public.settings
+  add column if not exists whatsapp_number text,
+  add column if not exists instagram_url text;
+
+comment on column public.settings.whatsapp_number is
+  'Número de WhatsApp da loja, com DDI e DDD, só dígitos ou com formatação
+   — a formatação é limpa automaticamente no front-end ao montar o link
+   de contato (wa.me).';
+comment on column public.settings.instagram_url is
+  'Link completo do perfil do Instagram da loja.';
+
+-- Preenche a linha já existente com os valores atuais — "alter ... add
+-- column ... default" só vale pra linhas novas, não afeta a linha
+-- singleton (id=1) que você já tem.
+update public.settings
+set
+  whatsapp_number = coalesce(nullif(whatsapp_number, ''), '+55 91 9153-4970'),
+  instagram_url = coalesce(nullif(instagram_url, ''), 'https://www.instagram.com/estantelivre.locadora/')
+where id = 1;
+
+-- ┌─────────────────────────────────────────────────────────────────────┐
+-- │ 10) seed.sql (opcional — categorias e livros de exemplo)       │
 -- └─────────────────────────────────────────────────────────────────────┘
 
 -- ═══════════════════════════════════════════════════════════════════

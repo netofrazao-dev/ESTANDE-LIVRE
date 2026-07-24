@@ -4,6 +4,7 @@ import toast from 'react-hot-toast'
 import { useAuthStore } from '@/stores/authStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 export default function Login() {
   const navigate = useNavigate()
@@ -50,9 +51,8 @@ export default function Login() {
             required
             autoComplete="email"
           />
-          <Input
+          <PasswordInput
             label="Senha"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required

@@ -343,7 +343,8 @@ function RentalCard({ rental }) {
           ) : canRenew ? (
             <div className="mt-4 pt-4 border-t border-sepia/15 flex items-center justify-between gap-3">
               <span className="text-xs text-cafe/60">
-                Ainda precisa de mais tempo? Renove uma vez, sem sair de casa.
+                Você escolheu <strong className="text-cafe">{rental.renewal_days || 0} dias</strong> de
+                renovação no ato da locação, sem custo.
               </span>
               <Button
                 variant="secondary"

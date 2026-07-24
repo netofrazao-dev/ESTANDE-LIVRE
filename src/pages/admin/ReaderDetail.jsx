@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import { ArrowLeft, BookOpen, User, Mail, Phone, CircleDollarSign, Shield } from 'lucide-react'
+import { ArrowLeft, BookOpen, User, Mail, Phone, CircleDollarSign, Shield, Truck, Store } from 'lucide-react'
 import { useReaderStats, useReaderRentals, usePromoteToAdmin } from '@/hooks/useRentals'
 import { supabase } from '@/lib/supabase'
 import { useQuery } from '@tanstack/react-query'
@@ -147,7 +147,18 @@ export default function AdminReaderDetail() {
                   <div className="text-sm font-medium truncate">{r.book?.title}</div>
                   <div className="text-xs text-cafe/60 font-mono">
                     {formatDatador(r.rented_at)} → {formatDatador(r.due_date)}
+                    {r.renewal_days > 0 && <span className="text-sepia"> · renovação: {r.renewal_days}d</span>}
                   </div>
+                </div>
+                <div
+                  className="text-xs text-cafe/60 flex items-center gap-1 cursor-help"
+                  title={r.delivery_method === 'delivery' ? (r.delivery_address || 'Endereço não informado') : undefined}
+                >
+                  {r.delivery_method === 'delivery' ? (
+                    <><Truck className="w-3.5 h-3.5 text-sepia" /> Entrega</>
+                  ) : (
+                    <><Store className="w-3.5 h-3.5 text-sepia" /> Retirada</>
+                  )}
                 </div>
                 <div className="text-xs">
                   {fine.isLate ? (

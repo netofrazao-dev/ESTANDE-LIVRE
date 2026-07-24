@@ -5,6 +5,7 @@ import { KeyRound } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import PasswordInput from '@/components/ui/PasswordInput'
 
 export default function ResetPassword() {
   const navigate = useNavigate()
@@ -71,18 +72,16 @@ export default function ResetPassword() {
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-5">
-          <Input
+          <PasswordInput
             label="Nova senha"
-            type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
             autoComplete="new-password"
             hint="Mín. 6 caracteres"
           />
-          <Input
+          <PasswordInput
             label="Confirmar nova senha"
-            type="password"
             value={confirmPassword}
             onChange={(e) => setConfirmPassword(e.target.value)}
             required

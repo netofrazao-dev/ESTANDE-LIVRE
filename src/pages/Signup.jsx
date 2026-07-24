@@ -5,6 +5,7 @@ import { MailCheck } from 'lucide-react'
 import { useAuthStore } from '@/stores/authStore'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
+import PasswordInput from '@/components/ui/PasswordInput'
 import Turnstile, { isCaptchaEnabled } from '@/components/ui/Turnstile'
 
 export default function Signup() {
@@ -116,18 +117,16 @@ export default function Signup() {
             hint="Precisamos pra combinar retirada/entrega e avisar sobre seus empréstimos"
           />
           <div className="grid grid-cols-2 gap-4">
-            <Input
+            <PasswordInput
               label="Senha"
-              type="password"
               value={form.password}
               onChange={update('password')}
               required
               autoComplete="new-password"
               hint="Mín. 6 caracteres"
             />
-            <Input
+            <PasswordInput
               label="Confirmar"
-              type="password"
               value={form.confirmPassword}
               onChange={update('confirmPassword')}
               required
