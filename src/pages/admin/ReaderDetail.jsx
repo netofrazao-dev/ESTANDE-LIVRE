@@ -150,14 +150,20 @@ export default function AdminReaderDetail() {
                     {r.renewal_days > 0 && <span className="text-sepia"> · renovação: {r.renewal_days}d</span>}
                   </div>
                 </div>
-                <div
-                  className="text-xs text-cafe/60 flex items-center gap-1 cursor-help"
-                  title={r.delivery_method === 'delivery' ? (r.delivery_address || 'Endereço não informado') : undefined}
-                >
+                <div className="text-xs text-cafe/60 w-32 flex-shrink-0">
                   {r.delivery_method === 'delivery' ? (
-                    <><Truck className="w-3.5 h-3.5 text-sepia" /> Entrega</>
+                    <div>
+                      <span className="flex items-center gap-1">
+                        <Truck className="w-3.5 h-3.5 text-sepia flex-shrink-0" /> Entrega
+                      </span>
+                      <div className="text-[10px] text-cafe/50 truncate" title={r.delivery_address || ''}>
+                        {r.delivery_address || 'sem endereço'}
+                      </div>
+                    </div>
                   ) : (
-                    <><Store className="w-3.5 h-3.5 text-sepia" /> Retirada</>
+                    <span className="flex items-center gap-1">
+                      <Store className="w-3.5 h-3.5 text-sepia" /> Retirada
+                    </span>
                   )}
                 </div>
                 <div className="text-xs">

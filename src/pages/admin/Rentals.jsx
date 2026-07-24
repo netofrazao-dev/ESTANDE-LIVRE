@@ -53,7 +53,7 @@ export default function AdminRentals() {
 
       {/* Tabela */}
       <div className="border border-sepia/15 overflow-x-auto bg-pergaminho">
-        <table className="w-full text-sm min-w-[1150px]">
+        <table className="w-full text-sm min-w-[1250px]">
           <thead className="bg-pergaminho-dark/40 border-b border-sepia/15">
             <tr>
               <th className="text-left px-4 py-3 eyebrow">Leitor</th>
@@ -129,14 +129,19 @@ export default function AdminRentals() {
                         <span className="text-xs">{rentalStatusLabel(r.status)}</span>
                       )}
                     </td>
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 max-w-[180px]">
                       {r.delivery_method === 'delivery' ? (
-                        <span
-                          className="inline-flex items-center gap-1.5 text-xs text-cafe/80 cursor-help"
-                          title={r.delivery_address || 'Endereço não informado'}
-                        >
-                          <Truck className="w-3.5 h-3.5 text-sepia" /> Entrega
-                        </span>
+                        <div>
+                          <span className="inline-flex items-center gap-1.5 text-xs text-cafe/80">
+                            <Truck className="w-3.5 h-3.5 text-sepia flex-shrink-0" /> Entrega
+                          </span>
+                          <div
+                            className="text-[10px] text-cafe/50 truncate mt-0.5"
+                            title={r.delivery_address || ''}
+                          >
+                            {r.delivery_address || 'sem endereço informado'}
+                          </div>
+                        </div>
                       ) : (
                         <span className="inline-flex items-center gap-1.5 text-xs text-cafe/60">
                           <Store className="w-3.5 h-3.5 text-sepia" /> Retirada
