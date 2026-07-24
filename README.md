@@ -82,7 +82,9 @@ Abra o **SQL Editor** do seu projeto Supabase e execute, **nesta ordem exata**
 6. `supabase/migration_v4.sql` — tabela de configurações do sistema (editável pelo admin, sem redeploy)
 7. `supabase/migration_v5.sql` — checkout atômico (corrige corrida de disponibilidade) + locação no balcão
 8. `supabase/migration_v6.sql` — planos de preço por livro, multa normal/reservada, dano granular, combos
-9. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
+9. `supabase/migration_v7.sql` — WhatsApp e Instagram da loja
+10. `supabase/migration_v8.sql` — confirmação de entrega/retirada por pedido
+11. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
 
 ### 3.1 Deploy da Edge Function de notificações (opcional, mas recomendado)
 
@@ -484,6 +486,30 @@ ajuste em `/admin/planos-de-preco` e `/admin/configuracoes` antes de valer
 pra clientes de verdade. Livros já cadastrados foram automaticamente
 atribuídos ao plano "Padrão" — troque manualmente os que são especiais
 (Tolkien, C. S. Lewis, etc.) em Acervo.
+
+---
+
+## Controle de pedidos — agrupamento e confirmação de entrega
+
+A partir da `migration_v8.sql`, a tela `/admin/emprestimos` passou a agrupar
+os livros de uma mesma locação como um **pedido só** (antes cada livro
+aparecia como uma linha solta, mesmo quando vários eram alugados juntos no
+mesmo checkout). O agrupamento usa o horário exato do checkout — como
+todos os livros de uma mesma compra são gravados na mesma transação do
+banco, eles compartilham o mesmo timestamp.
+
+Clicando num pedido, abre um modal com:
+- Endereço completo (se for entrega) e dados de contato do leitor
+- Cada livro com o prazo, preço e dias de renovação escolhidos
+- Botão para marcar o pedido inteiro como **pago**
+- Botão para marcar como **entregue/retirado** — um controle novo,
+  separado do status do empréstimo em si, porque hoje o livro "sai do
+  estoque" no checkout, mas fisicamente só sai da loja quando é de fato
+  entregue ou retirado
+
+A lista principal separa automaticamente os pedidos em duas seções:
+**aguardando retirada/entrega** e **já entregues/retirados** — e tem um
+filtro rápido pra ver só os que ainda estão com pagamento pendente.
 
 ---
 

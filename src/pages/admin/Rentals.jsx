@@ -1,13 +1,15 @@
-import { useState } from 'react'
-import { Link } from 'react-router-dom'
+import { useState, useMemo } from 'react'
+import {
+  AlertTriangle, Truck, Store, BookOpen, PackageCheck, Clock3,
+  CircleDollarSign, ChevronRight,
+} from 'lucide-react'
 import { useAllRentals } from '@/hooks/useRentals'
-import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel } from '@/lib/utils'
-import { cn } from '@/lib/utils'
 import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
-import { AlertTriangle, CircleDollarSign, Store, Truck } from 'lucide-react'
-import FinePaymentModal from '@/components/admin/FinePaymentModal'
+import { groupRentalsIntoOrders } from '@/lib/orders'
+import { computeRentalFine, formatDatador, formatMoney, cn } from '@/lib/utils'
+import OrderDetailModal from '@/components/admin/OrderDetailModal'
 
-const filters = [
+const statusFilters = [
   { key: '', label: 'Todos' },
   { key: 'active', label: 'Em curso' },
   { key: 'returned', label: 'Devolvidos' },
@@ -17,11 +19,20 @@ const filters = [
 
 export default function AdminRentals() {
   const [statusFilter, setStatusFilter] = useState('')
-  const [paying, setPaying] = useState(null)
+  const [onlyUnpaid, setOnlyUnpaid] = useState(false)
+  const [selectedOrder, setSelectedOrder] = useState(null)
+
   const { data: rentals = [], isLoading } = useAllRentals(
     statusFilter ? { status: statusFilter } : {},
   )
   const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
+
+  const orders = useMemo(() => groupRentalsIntoOrders(rentals), [rentals])
+
+  const filtered = onlyUnpaid ? orders.filter((o) => !o.allPaid) : orders
+
+  const pending = filtered.filter((o) => !o.allDelivered)
+  const fulfilled = filtered.filter((o) => o.allDelivered)
 
   return (
     <div>
@@ -29,13 +40,14 @@ export default function AdminRentals() {
         <div className="eyebrow mb-2">Logística</div>
         <h1 className="font-display text-display-md">Controle de empréstimos</h1>
         <p className="text-sm text-cafe/70 mt-2">
-          Quem está com o quê, o que já voltou, o que precisa voltar.
+          Cada linha é um pedido — clique para ver o endereço, os livros e registrar pagamento
+          ou entrega.
         </p>
       </div>
 
       {/* Filtros */}
-      <div className="flex flex-wrap gap-2 mb-6">
-        {filters.map((f) => (
+      <div className="flex flex-wrap items-center gap-2 mb-8">
+        {statusFilters.map((f) => (
           <button
             key={f.key}
             onClick={() => setStatusFilter(f.key)}
@@ -49,136 +61,146 @@ export default function AdminRentals() {
             {f.label}
           </button>
         ))}
+        <div className="w-px h-5 bg-sepia/20 mx-1" />
+        <button
+          onClick={() => setOnlyUnpaid(!onlyUnpaid)}
+          className={cn(
+            'px-3 py-1.5 text-xs font-medium border transition-colors flex items-center gap-1.5',
+            onlyUnpaid
+              ? 'bg-terracota text-pergaminho border-terracota'
+              : 'border-sepia/30 text-cafe/70 hover:border-terracota hover:text-terracota',
+          )}
+        >
+          <CircleDollarSign className="w-3.5 h-3.5" /> Só pendentes de pagamento
+        </button>
       </div>
 
-      {/* Tabela */}
-      <div className="border border-sepia/15 overflow-x-auto bg-pergaminho">
-        <table className="w-full text-sm min-w-[1250px]">
-          <thead className="bg-pergaminho-dark/40 border-b border-sepia/15">
-            <tr>
-              <th className="text-left px-4 py-3 eyebrow">Leitor</th>
-              <th className="text-left px-4 py-3 eyebrow">Livro</th>
-              <th className="text-left px-4 py-3 eyebrow">Retirado</th>
-              <th className="text-left px-4 py-3 eyebrow">Devolver até</th>
-              <th className="text-left px-4 py-3 eyebrow">Status</th>
-              <th className="text-left px-4 py-3 eyebrow">Entrega</th>
-              <th className="text-right px-4 py-3 eyebrow">Multa</th>
-              <th className="text-right px-4 py-3 eyebrow w-16">Ação</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-sepia/10">
-            {isLoading ? (
-              <tr><td colSpan="8" className="text-center py-10 text-sepia">Carregando…</td></tr>
-            ) : rentals.length === 0 ? (
-              <tr><td colSpan="8" className="text-center py-10 text-sepia">Nenhum registro.</td></tr>
+      {isLoading ? (
+        <div className="text-center py-10 text-sepia">Carregando…</div>
+      ) : filtered.length === 0 ? (
+        <div className="ficha text-center py-16">
+          <div className="font-display text-xl mb-1">Nenhum pedido encontrado</div>
+          <p className="text-sm text-cafe/60">Ajuste os filtros ou aguarde novas locações.</p>
+        </div>
+      ) : (
+        <div className="space-y-10">
+          {/* Aguardando retirada/entrega */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <Clock3 className="w-4 h-4 text-terracota" />
+              <h2 className="font-display text-xl">Aguardando retirada/entrega</h2>
+              <span className="font-mono text-xs text-sepia">({pending.length})</span>
+            </div>
+            {pending.length === 0 ? (
+              <div className="text-sm text-sepia py-4">Nenhum pedido pendente — tudo entregue.</div>
             ) : (
-              rentals.map((r) => {
-                const hasReservation = waitlistSet.has(r.book_id)
-                const fine = computeRentalFine(r, hasReservation)
-                const hasPendingAmount =
-                  (r.price > 0 && !r.rental_paid) ||
-                  (r.late_fee > 0 && !r.late_fee_paid) ||
-                  (r.damage_fee > 0 && !r.damage_fee_paid)
-                const totalFee = (r.price || 0) + fine.amount + (r.damage_fee || 0)
-
-                return (
-                  <tr
-                    key={r.id}
-                    className={cn(
-                      'hover:bg-pergaminho-dark/20 transition-colors',
-                      (fine.isLate || hasPendingAmount) && 'bg-terracota/5',
-                    )}
-                  >
-                    <td className="px-4 py-3">
-                      <Link
-                        to={`/admin/leitores/${r.user?.id}`}
-                        className="font-medium text-sm hover:text-musgo transition-colors"
-                      >
-                        {r.user?.full_name}
-                      </Link>
-                      <div className="text-xs text-cafe/60">{r.user?.email}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="text-sm">{r.book?.title}</div>
-                      <div className="text-xs text-cafe/60">
-                        {r.book?.author}
-                        {r.renewal_days > 0 && (
-                          <span className="text-sepia"> · renovação: {r.renewal_days}d</span>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 text-xs font-mono text-cafe/70 whitespace-nowrap">
-                      {formatDatador(r.rented_at)}
-                    </td>
-                    <td className={cn(
-                      'px-4 py-3 text-xs font-mono whitespace-nowrap',
-                      fine.isLate && 'text-terracota font-semibold',
-                    )}>
-                      {formatDatador(r.due_date)}
-                      {r.renewals_count > 0 && (
-                        <span className="ml-1.5 text-[9px] text-sepia">· renovado</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3">
-                      {fine.isLate ? (
-                        <span className="carimbo carimbo-terracota inline-flex items-center gap-1" style={{ transform: 'none' }}>
-                          <AlertTriangle className="w-3 h-3" />
-                          Atrasado
-                        </span>
-                      ) : (
-                        <span className="text-xs">{rentalStatusLabel(r.status)}</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 max-w-[180px]">
-                      {r.delivery_method === 'delivery' ? (
-                        <div>
-                          <span className="inline-flex items-center gap-1.5 text-xs text-cafe/80">
-                            <Truck className="w-3.5 h-3.5 text-sepia flex-shrink-0" /> Entrega
-                          </span>
-                          <div
-                            className="text-[10px] text-cafe/50 truncate mt-0.5"
-                            title={r.delivery_address || ''}
-                          >
-                            {r.delivery_address || 'sem endereço informado'}
-                          </div>
-                        </div>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5 text-xs text-cafe/60">
-                          <Store className="w-3.5 h-3.5 text-sepia" /> Retirada
-                        </span>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <span className={cn(
-                        'font-mono text-sm tabular-nums',
-                        totalFee > 0 ? (hasPendingAmount ? 'text-terracota' : 'text-cafe/40') : 'text-cafe/40',
-                      )}>
-                        {formatMoney(totalFee)}
-                      </span>
-                      {totalFee > 0 && !hasPendingAmount && (
-                        <div className="text-[9px] text-musgo">quitado</div>
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      {hasPendingAmount && (
-                        <button
-                          onClick={() => setPaying(r)}
-                          className="p-2 text-sepia hover:text-musgo transition-colors"
-                          title="Registrar pagamento"
-                        >
-                          <CircleDollarSign className="w-4 h-4" />
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                )
-              })
+              <div className="space-y-2">
+                {pending.map((order) => (
+                  <OrderRow
+                    key={order.orderId}
+                    order={order}
+                    waitlistSet={waitlistSet}
+                    onClick={() => setSelectedOrder(order)}
+                  />
+                ))}
+              </div>
             )}
-          </tbody>
-        </table>
+          </section>
+
+          {/* Já entregues/retirados */}
+          <section>
+            <div className="flex items-center gap-2 mb-4">
+              <PackageCheck className="w-4 h-4 text-musgo" />
+              <h2 className="font-display text-xl">Já entregues / retirados</h2>
+              <span className="font-mono text-xs text-sepia">({fulfilled.length})</span>
+            </div>
+            {fulfilled.length === 0 ? (
+              <div className="text-sm text-sepia py-4">Nenhum pedido confirmado ainda.</div>
+            ) : (
+              <div className="space-y-2">
+                {fulfilled.map((order) => (
+                  <OrderRow
+                    key={order.orderId}
+                    order={order}
+                    waitlistSet={waitlistSet}
+                    onClick={() => setSelectedOrder(order)}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+      )}
+
+      {selectedOrder && (
+        <OrderDetailModal order={selectedOrder} onClose={() => setSelectedOrder(null)} />
+      )}
+    </div>
+  )
+}
+
+function OrderRow({ order, waitlistSet, onClick }) {
+  const anyLateWithFine = order.items.some((i) => {
+    const hasReservation = waitlistSet.has(i.book_id)
+    return computeRentalFine(i, hasReservation).isLate
+  })
+
+  const firstTitle = order.items[0]?.book?.title
+  const extra = order.bookCount - 1
+
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        'w-full ficha flex items-center gap-4 text-left hover:bg-pergaminho-dark/20 transition-colors',
+        anyLateWithFine && 'border-l-4 border-l-terracota',
+      )}
+    >
+      {/* Capa do primeiro livro */}
+      <div className="w-10 h-14 bg-pergaminho-darker flex-shrink-0 overflow-hidden">
+        {order.items[0]?.book?.cover_url ? (
+          <img src={order.items[0].book.cover_url} alt="" className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-sepia/40">
+            <BookOpen className="w-4 h-4" />
+          </div>
+        )}
       </div>
 
-      {paying && <FinePaymentModal rental={paying} onClose={() => setPaying(null)} />}
-    </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-sm">{order.user?.full_name}</span>
+          {anyLateWithFine && (
+            <span className="carimbo carimbo-terracota inline-flex items-center gap-1" style={{ transform: 'none' }}>
+              <AlertTriangle className="w-3 h-3" /> Atrasado
+            </span>
+          )}
+        </div>
+        <div className="text-xs text-cafe/60 truncate">
+          {firstTitle}{extra > 0 && ` + ${extra} livro${extra > 1 ? 's' : ''}`}
+        </div>
+      </div>
+
+      <div className="hidden sm:flex items-center gap-1.5 text-xs text-cafe/60 flex-shrink-0">
+        {order.deliveryMethod === 'delivery' ? (
+          <><Truck className="w-3.5 h-3.5 text-sepia" /> Entrega</>
+        ) : (
+          <><Store className="w-3.5 h-3.5 text-sepia" /> Retirada</>
+        )}
+      </div>
+
+      <div className="text-xs font-mono text-cafe/60 flex-shrink-0 hidden md:block">
+        {formatDatador(order.rentedAt)}
+      </div>
+
+      <div className="text-right flex-shrink-0">
+        <div className="font-mono text-sm">{formatMoney(order.totalPrice)}</div>
+        <div className={cn('text-[10px]', order.allPaid ? 'text-musgo' : 'text-terracota')}>
+          {order.allPaid ? 'pago' : 'pendente'}
+        </div>
+      </div>
+
+      <ChevronRight className="w-4 h-4 text-sepia flex-shrink-0" />
+    </button>
   )
 }

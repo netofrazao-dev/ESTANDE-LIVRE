@@ -250,6 +250,47 @@ export const useRenewRental = () => {
 }
 
 // ── Registrar pagamento — multa, dano/reposição e/ou o preço do aluguel
+// ── Pedido (grupo de livros do mesmo checkout) ──────────────────────
+
+// Marca o preço da locação como pago, pra todos os itens do pedido de
+// uma vez (multa/dano continuam sendo tratados individualmente, via
+// FinePaymentModal — isso aqui é só o valor do aluguel em si).
+export const useMarkOrderPaid = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ rentalIds, method = 'cash' }) => {
+      const { error } = await supabase
+        .from('rentals')
+        .update({ rental_paid: true, rental_paid_at: new Date().toISOString(), rental_payment_method: method })
+        .in('id', rentalIds)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rentals'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+      qc.invalidateQueries({ queryKey: ['financial-pending'] })
+    },
+  })
+}
+
+// Marca (ou desmarca) que o pedido inteiro já foi entregue/retirado —
+// um controle operacional, separado do status do empréstimo em si.
+export const useSetOrderDelivered = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ rentalIds, delivered }) => {
+      const { error } = await supabase
+        .from('rentals')
+        .update({ delivered_at: delivered ? new Date().toISOString() : null })
+        .in('id', rentalIds)
+      if (error) throw error
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rentals'] })
+    },
+  })
+}
+
 export const useRegisterPayment = () => {
   const qc = useQueryClient()
   return useMutation({
