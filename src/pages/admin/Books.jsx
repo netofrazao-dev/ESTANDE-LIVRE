@@ -33,6 +33,7 @@ export default function AdminBooks() {
   const [search, setSearch] = useState('')
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
+  const [blockedDelete, setBlockedDelete] = useState(null) // livro com histórico, não pode apagar
 
   // includeHidden: true — o admin precisa ver e gerenciar os livros
   // ocultos também, só o catálogo público que os esconde.
@@ -72,7 +73,20 @@ export default function AdminBooks() {
       toast.success('Livro removido do acervo.')
       setDeleting(null)
     } catch (err) {
-      toast.error(err.message || 'Erro ao remover.')
+      // 23503 = violação de chave estrangeira — o Postgres está impedindo
+      // de propósito, porque apagar esse livro destruiria o histórico de
+      // empréstimos (financeiro, leitores, etc.) ligado a ele. Nesse caso,
+      // a saída certa é ocultar, não forçar o apagamento.
+      const isFkViolation =
+        err.code === '23503' ||
+        err.message?.toLowerCase().includes('foreign key') ||
+        err.message?.toLowerCase().includes('violates')
+      if (isFkViolation) {
+        setBlockedDelete(deleting)
+        setDeleting(null)
+      } else {
+        toast.error(err.message || 'Erro ao remover.')
+      }
     }
   }
 
@@ -80,6 +94,7 @@ export default function AdminBooks() {
     try {
       await toggleHidden.mutateAsync({ id: book.id, hidden: !book.hidden })
       toast.success(book.hidden ? 'Livro visível de novo no site.' : 'Livro ocultado do site.')
+      setBlockedDelete(null)
     } catch (err) {
       toast.error(err.message || 'Erro ao atualizar.')
     }
@@ -243,6 +258,32 @@ export default function AdminBooks() {
         <p className="text-xs text-sepia mt-3">
           Precisa só tirar de circulação por um tempo, sem apagar? Use o botão de olho na lista
           em vez de remover — ele oculta o livro do site sem perder o cadastro nem o histórico.
+        </p>
+      </Modal>
+
+      {/* Modal: não pode apagar (tem histórico), oferece ocultar */}
+      <Modal
+        open={!!blockedDelete}
+        onClose={() => setBlockedDelete(null)}
+        title="Este livro não pode ser apagado"
+        footer={
+          <>
+            <Button variant="secondary" onClick={() => setBlockedDelete(null)}>Cancelar</Button>
+            <Button onClick={() => handleToggleHidden(blockedDelete)} loading={toggleHidden.isPending}>
+              Ocultar este livro
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-cafe/80 text-pretty">
+          <strong>"{blockedDelete?.title}"</strong> já tem empréstimos registrados no histórico —
+          apagar o cadastro dele apagaria junto o histórico financeiro e de locação de quem já
+          alugou esse título, então o sistema não permite.
+        </p>
+        <p className="text-sm text-cafe/80 mt-3 text-pretty">
+          A alternativa é <strong>ocultar</strong>: o livro some do catálogo e da busca, ninguém
+          consegue alugar de novo, mas o cadastro e o histórico continuam intactos — e dá pra
+          reverter a qualquer momento.
         </p>
       </Modal>
     </div>
