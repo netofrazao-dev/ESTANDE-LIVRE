@@ -84,7 +84,8 @@ Abra o **SQL Editor** do seu projeto Supabase e execute, **nesta ordem exata**
 8. `supabase/migration_v6.sql` — planos de preço por livro, multa normal/reservada, dano granular, combos
 9. `supabase/migration_v7.sql` — WhatsApp e Instagram da loja
 10. `supabase/migration_v8.sql` — confirmação de entrega/retirada por pedido
-11. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
+11. `supabase/migration_v9.sql` — ocultar livro do catálogo público
+12. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
 
 ### 3.1 Deploy da Edge Function de notificações (opcional, mas recomendado)
 
@@ -510,6 +511,37 @@ Clicando num pedido, abre um modal com:
 A lista principal separa automaticamente os pedidos em duas seções:
 **aguardando retirada/entrega** e **já entregues/retirados** — e tem um
 filtro rápido pra ver só os que ainda estão com pagamento pendente.
+
+---
+
+## Ocultar livro do catálogo
+
+A partir da `migration_v9.sql`, cada livro tem um campo "Ocultar do site"
+(botão de olho na lista de Acervo, ou checkbox no formulário). Um livro
+oculto:
+- Não aparece no catálogo público, na busca, nem nos destaques da home
+- Não pode ser alugado nem reservado — o banco recusa mesmo que alguém
+  tente pelo link direto ou com o livro já aberto numa aba
+- Continua existindo normalmente no Acervo do admin, com uma tag "Oculto"
+  visível, fácil de reverter
+
+Diferente de zerar as cópias disponíveis (que significa "esgotado, mas
+alugável assim que alguém devolver"), ocultar é um controle manual e
+independente do estoque — para quando o próprio livro precisa sair de
+circulação por um tempo, não o estoque dele.
+
+## Fila de reservas — visão do admin
+
+Nova tela em `/admin/reservas`, mostrando cada livro esgotado com fila de
+espera, listado em ordem de chegada (quem reservou primeiro aparece
+primeiro). Cada linha mostra nome, e-mail e telefone do leitor, e se ele
+já foi avisado que o livro está disponível (com o prazo de 48h pra
+retirar antes de passar pro próximo).
+
+A regra de negócio de bloquear renovação quando há fila já existia desde
+o começo do sistema de reservas — essa tela só deixa isso visível pro
+admin, que antes precisava confiar que o sistema estava fazendo certo
+sem conseguir conferir.
 
 ---
 

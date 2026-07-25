@@ -207,7 +207,7 @@ function StepReader({ onSelect }) {
 // ── Passo 2: escolher livros e prazo ────────────────────────────────
 function StepBooks({ reader, selectedBooks, setSelectedBooks, selectedTiers, setSelectedTiers, onBack, onNext }) {
   const [search, setSearch] = useState('')
-  const { data: books = [], isLoading } = useBooks({ search })
+  const { data: books = [], isLoading } = useBooks({ search, includeHidden: true })
   const { data: plans = [] } = usePricingPlans()
   const maxBooks = useSettingsStore((s) => s.maxBooksPerRental)
 

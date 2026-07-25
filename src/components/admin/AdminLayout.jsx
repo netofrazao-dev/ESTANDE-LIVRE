@@ -11,6 +11,7 @@ import {
   Settings,
   PlusCircle,
   DollarSign,
+  Clock3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useAuthStore } from '@/stores/authStore'
@@ -21,6 +22,7 @@ const items = [
   { to: '/admin/livros', label: 'Acervo', icon: BookMarked },
   { to: '/admin/categorias', label: 'Categorias', icon: Tag },
   { to: '/admin/planos-de-preco', label: 'Planos de preço', icon: DollarSign },
+  { to: '/admin/reservas', label: 'Reservas', icon: Clock3 },
   { to: '/admin/emprestimos', label: 'Empréstimos', icon: Library },
   { to: '/admin/devolucoes', label: 'Devoluções', icon: PackageCheck },
   { to: '/admin/leitores', label: 'Leitores', icon: Users },

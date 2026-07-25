@@ -84,3 +84,25 @@ export const useCancelReservation = () => {
     },
   })
 }
+
+// ── Admin: todas as reservas ativas, com dados do leitor e do livro ──
+// Já vem ordenado por data de criação — o primeiro de cada livro é quem
+// está na frente da fila.
+export const useAllActiveReservations = () => {
+  return useQuery({
+    queryKey: ['reservations', 'admin-all'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('reservations')
+        .select(`
+          *,
+          book:books(id, title, author, cover_url, available_copies, total_copies),
+          user:profiles(id, full_name, email, phone)
+        `)
+        .in('status', ['waiting', 'notified'])
+        .order('created_at', { ascending: true })
+      if (error) throw error
+      return data || []
+    },
+  })
+}

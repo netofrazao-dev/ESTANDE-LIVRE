@@ -2,14 +2,15 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 
 // Lista completa com filtros
-export const useBooks = ({ category, search, sort = 'newest' } = {}) => {
+export const useBooks = ({ category, search, sort = 'newest', includeHidden = false } = {}) => {
   return useQuery({
-    queryKey: ['books', { category, search, sort }],
+    queryKey: ['books', { category, search, sort, includeHidden }],
     queryFn: async () => {
       let query = supabase
         .from('books')
         .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
 
+      if (!includeHidden) query = query.eq('hidden', false)
       if (category) query = query.eq('category.slug', category)
       if (search) query = query.or(`title.ilike.%${search}%,author.ilike.%${search}%`)
 
@@ -43,6 +44,7 @@ export const useBook = (slug) => {
         .from('books')
         .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
         .eq('slug', slug)
+        .eq('hidden', false)
         .single()
       if (error) throw error
       return data
@@ -85,6 +87,7 @@ export const useFeaturedBooks = () => {
         .from('books')
         .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
         .eq('featured', true)
+        .eq('hidden', false)
         .order('created_at', { ascending: false })
         .limit(6)
       if (error) throw error
@@ -101,6 +104,7 @@ export const useNewArrivals = () => {
       const { data, error } = await supabase
         .from('books')
         .select('*, category:categories(id, name, slug), pricing_plan:pricing_plans(id, name)')
+        .eq('hidden', false)
         .order('created_at', { ascending: false })
         .limit(8)
       if (error) throw error
@@ -186,6 +190,17 @@ export const useSaveBook = () => {
         if (error) throw error
         return data
       }
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['books'] }),
+  })
+}
+
+export const useToggleBookHidden = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ id, hidden }) => {
+      const { error } = await supabase.from('books').update({ hidden }).eq('id', id)
+      if (error) throw error
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['books'] }),
   })

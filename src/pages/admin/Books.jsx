@@ -1,14 +1,14 @@
 import { useState } from 'react'
-import { Plus, Pencil, Trash2, Search, BookOpen } from 'lucide-react'
+import { Plus, Pencil, Trash2, Search, BookOpen, Eye, EyeOff } from 'lucide-react'
 import toast from 'react-hot-toast'
 import imageCompression from 'browser-image-compression'
-import { useBooks, useSaveBook, useDeleteBook, useCategories } from '@/hooks/useBooks'
+import { useBooks, useSaveBook, useDeleteBook, useCategories, useToggleBookHidden } from '@/hooks/useBooks'
 import { usePricingPlans } from '@/hooks/usePricing'
 import { supabase } from '@/lib/supabase'
 import Button from '@/components/ui/Button'
 import Input from '@/components/ui/Input'
 import Modal from '@/components/ui/Modal'
-import { slugify, formatMoney } from '@/lib/utils'
+import { slugify, formatMoney, cn } from '@/lib/utils'
 
 const emptyBook = {
   title: '',
@@ -25,6 +25,7 @@ const emptyBook = {
   total_copies: 1,
   available_copies: 1,
   featured: false,
+  hidden: false,
   catalog_number: '',
 }
 
@@ -33,19 +34,19 @@ export default function AdminBooks() {
   const [editing, setEditing] = useState(null)
   const [deleting, setDeleting] = useState(null)
 
-  const { data: books = [], isLoading } = useBooks({ search })
+  // includeHidden: true — o admin precisa ver e gerenciar os livros
+  // ocultos também, só o catálogo público que os esconde.
+  const { data: books = [], isLoading } = useBooks({ search, includeHidden: true })
   const { data: categories = [] } = useCategories()
   const { data: pricingPlans = [] } = usePricingPlans()
   const saveBook = useSaveBook()
   const deleteBook = useDeleteBook()
+  const toggleHidden = useToggleBookHidden()
 
   const handleNew = () => setEditing({ ...emptyBook })
 
   const handleSave = async (book) => {
     try {
-      // Remove os objetos aninhados que vêm do JOIN (category, pricing_plan)
-      // — no banco só existem as colunas category_id/pricing_plan_id.
-      // Mandar esses objetos junto quebra o update com "coluna não encontrada".
       const { category, pricing_plan, ...bookData } = book
       const payload = {
         ...bookData,
@@ -72,6 +73,15 @@ export default function AdminBooks() {
       setDeleting(null)
     } catch (err) {
       toast.error(err.message || 'Erro ao remover.')
+    }
+  }
+
+  const handleToggleHidden = async (book) => {
+    try {
+      await toggleHidden.mutateAsync({ id: book.id, hidden: !book.hidden })
+      toast.success(book.hidden ? 'Livro visível de novo no site.' : 'Livro ocultado do site.')
+    } catch (err) {
+      toast.error(err.message || 'Erro ao atualizar.')
     }
   }
 
@@ -110,7 +120,7 @@ export default function AdminBooks() {
               <th className="text-left px-4 py-3 eyebrow">Categoria</th>
               <th className="text-left px-4 py-3 eyebrow">Plano de preço</th>
               <th className="text-right px-4 py-3 eyebrow">Cópias</th>
-              <th className="text-right px-4 py-3 eyebrow w-32">Ações</th>
+              <th className="text-right px-4 py-3 eyebrow w-40">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-sepia/10">
@@ -120,7 +130,13 @@ export default function AdminBooks() {
               <tr><td colSpan="5" className="text-center py-10 text-sepia">Nenhum título encontrado.</td></tr>
             ) : (
               books.map((book) => (
-                <tr key={book.id} className="hover:bg-pergaminho-dark/20 transition-colors">
+                <tr
+                  key={book.id}
+                  className={cn(
+                    'hover:bg-pergaminho-dark/20 transition-colors',
+                    book.hidden && 'bg-sepia/5 opacity-70',
+                  )}
+                >
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <div className="w-9 h-12 bg-pergaminho-darker flex-shrink-0 overflow-hidden">
@@ -133,7 +149,14 @@ export default function AdminBooks() {
                         )}
                       </div>
                       <div className="min-w-0">
-                        <div className="font-medium truncate">{book.title}</div>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium truncate">{book.title}</span>
+                          {book.hidden && (
+                            <span className="carimbo carimbo-sepia flex-shrink-0" style={{ transform: 'none' }}>
+                              Oculto
+                            </span>
+                          )}
+                        </div>
                         <div className="text-xs text-cafe/60 truncate">{book.author}</div>
                       </div>
                     </div>
@@ -154,6 +177,16 @@ export default function AdminBooks() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <button
+                        onClick={() => handleToggleHidden(book)}
+                        className={cn(
+                          'p-2 transition-colors',
+                          book.hidden ? 'text-terracota hover:text-musgo' : 'text-sepia hover:text-terracota',
+                        )}
+                        title={book.hidden ? 'Tornar visível no site' : 'Ocultar do site'}
+                      >
+                        {book.hidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
                       <button
                         onClick={() => setEditing(book)}
                         className="p-2 text-sepia hover:text-musgo transition-colors"
@@ -207,6 +240,10 @@ export default function AdminBooks() {
           Você está prestes a remover <strong>"{deleting?.title}"</strong> do acervo.
           Esta ação não pode ser desfeita.
         </p>
+        <p className="text-xs text-sepia mt-3">
+          Precisa só tirar de circulação por um tempo, sem apagar? Use o botão de olho na lista
+          em vez de remover — ele oculta o livro do site sem perder o cadastro nem o histórico.
+        </p>
       </Modal>
     </div>
   )
@@ -227,9 +264,6 @@ function BookForm({ book, categories, pricingPlans, onCancel, onSave, saving }) 
     if (!file) return
     setUploading(true)
     try {
-      // Comprime no navegador antes de subir — uma foto de celular de 4MB
-      // vira ~300KB, sem perda visível numa capa de livro. Menos custo de
-      // Storage e carregamento bem mais rápido no catálogo.
       const compressed = await imageCompression(file, {
         maxSizeMB: 0.4,
         maxWidthOrHeight: 1000,
@@ -374,15 +408,29 @@ function BookForm({ book, categories, pricingPlans, onCancel, onSave, saving }) 
             />
           </div>
 
-          <label className="flex items-center gap-2 cursor-pointer">
-            <input
-              type="checkbox"
-              checked={form.featured || false}
-              onChange={update('featured')}
-              className="w-4 h-4 accent-musgo"
-            />
-            <span className="text-sm">Destaque na home</span>
-          </label>
+          <div className="flex items-center gap-6">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.featured || false}
+                onChange={update('featured')}
+                className="w-4 h-4 accent-musgo"
+              />
+              <span className="text-sm">Destaque na home</span>
+            </label>
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.hidden || false}
+                onChange={update('hidden')}
+                className="w-4 h-4 accent-terracota"
+              />
+              <span className="text-sm">
+                Ocultar do site
+                {form.hidden && <span className="text-terracota"> (ninguém pode ver ou alugar)</span>}
+              </span>
+            </label>
+          </div>
         </div>
       </div>
     </Modal>
