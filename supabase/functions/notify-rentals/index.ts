@@ -14,7 +14,7 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const resendApiKey = Deno.env.get('RESEND_API_KEY') // opcional
 const fromEmail = Deno.env.get('EMAIL_FROM') || 'Estante Livre <onboarding@resend.dev>'
-const siteUrl = Deno.env.get('SITE_URL') || 'https://estantelivre.com.br'
+const siteUrl = Deno.env.get('SITE_URL') || 'https://estante-livre-locadora.vercel.app'
 
 const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
