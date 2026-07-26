@@ -122,12 +122,18 @@ serve(async () => {
 
   try {
     // ── 1. Empréstimos vencendo em até 2 dias ──
-    const { data: dueSoon } = await supabase
+    const { data: dueSoon, error: dueSoonError } = await supabase
       .from('rentals')
       .select('*, book:books(title), user:profiles(id, full_name, email)')
       .eq('status', 'active')
       .gte('due_date', now.toISOString())
       .lte('due_date', twoDaysFromNow.toISOString())
+
+    if (dueSoonError) {
+      console.error('Erro ao buscar due_soon:', dueSoonError)
+      results.errors.push(`consulta due_soon: ${dueSoonError.message}`)
+    }
+    console.log(`[due_soon] encontrados: ${dueSoon?.length || 0} (agora=${now.toISOString()})`)
 
     for (const r of dueSoon || []) {
       // Evita duplicar no mesmo dia
@@ -167,11 +173,17 @@ serve(async () => {
     }
 
     // ── 2. Empréstimos atrasados (uma vez por dia) ──
-    const { data: overdue } = await supabase
+    const { data: overdue, error: overdueError } = await supabase
       .from('rentals')
       .select('*, book:books(title), user:profiles(id, full_name, email)')
       .eq('status', 'active')
       .lt('due_date', now.toISOString())
+
+    if (overdueError) {
+      console.error('Erro ao buscar overdue:', overdueError)
+      results.errors.push(`consulta overdue: ${overdueError.message}`)
+    }
+    console.log(`[overdue] encontrados: ${overdue?.length || 0} (agora=${now.toISOString()})`)
 
     for (const r of overdue || []) {
       const { data: existing } = await supabase
@@ -182,7 +194,10 @@ serve(async () => {
         .gte('created_at', new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString())
         .maybeSingle()
 
-      if (existing) continue
+      if (existing) {
+        console.log(`[overdue] rental=${r.id} pulado — já notificado nas últimas 20h`)
+        continue
+      }
 
       const daysLate = Math.floor(
         (now.getTime() - new Date(r.due_date).getTime()) / (1000 * 60 * 60 * 24),
@@ -211,11 +226,16 @@ serve(async () => {
     }
 
     // ── 3. Reservas que ficaram disponíveis (log criado pelo trigger, sem e-mail ainda) ──
-    const { data: pendingReservations } = await supabase
+    const { data: pendingReservations, error: pendingError } = await supabase
       .from('notification_log')
       .select('*, user:profiles(email, full_name), reservation:reservations(id, book_id, expires_at)')
       .eq('type', 'reservation_available')
       .eq('status', 'pending')
+
+    if (pendingError) {
+      console.error('Erro ao buscar reservas pendentes:', pendingError)
+      results.errors.push(`consulta reservation_available: ${pendingError.message}`)
+    }
 
     for (const n of pendingReservations || []) {
       try {
@@ -242,12 +262,17 @@ serve(async () => {
     }
 
     // ── 4. Expirar reservas com prazo estourado; libera fila ──
-    const { data: expired } = await supabase
+    const { data: expired, error: expiredError } = await supabase
       .from('reservations')
       .update({ status: 'expired', updated_at: new Date().toISOString() })
       .eq('status', 'notified')
       .lt('expires_at', now.toISOString())
       .select('id, book_id')
+
+    if (expiredError) {
+      console.error('Erro ao expirar reservas:', expiredError)
+      results.errors.push(`consulta reservations_expired: ${expiredError.message}`)
+    }
 
     // Para cada reserva expirada, forçar re-notificação do próximo da fila
     for (const r of expired || []) {
