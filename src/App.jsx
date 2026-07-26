@@ -19,18 +19,44 @@ import NotFound from './pages/NotFound'
 
 // Admin — carregado sob demanda (code splitting). Quem nunca visita o
 // backoffice nunca baixa esse código.
-const AdminLayout = lazy(() => import('./components/admin/AdminLayout'))
-const AdminDashboard = lazy(() => import('./pages/admin/Dashboard'))
-const AdminBooks = lazy(() => import('./pages/admin/Books'))
-const AdminRentals = lazy(() => import('./pages/admin/Rentals'))
-const AdminReturns = lazy(() => import('./pages/admin/Returns'))
-const AdminReaders = lazy(() => import('./pages/admin/Readers'))
-const AdminReaderDetail = lazy(() => import('./pages/admin/ReaderDetail'))
-const AdminCategories = lazy(() => import('./pages/admin/Categories'))
-const AdminSettings = lazy(() => import('./pages/admin/Settings'))
-const AdminNewRental = lazy(() => import('./pages/admin/NewRental'))
-const AdminPricingPlans = lazy(() => import('./pages/admin/PricingPlans'))
-const AdminReservations = lazy(() => import('./pages/admin/Reservations'))
+// Depois de um deploy novo, os nomes dos arquivos internos mudam. Se
+// alguém já estava com o site aberto numa aba antes do deploy e navega
+// pra uma parte "lazy" (carregada sob demanda, como o admin), o
+// navegador tenta buscar o arquivo antigo, que não existe mais — e
+// quebra com "Failed to fetch dynamically imported module". Em vez de
+// mostrar esse erro, recarregamos a página uma vez, o que resolve
+// sozinho (a aba recarregada já pega a versão atual).
+function lazyWithReload(importFn) {
+  return lazy(async () => {
+    try {
+      const mod = await importFn()
+      sessionStorage.removeItem('chunk-reload-attempted')
+      return mod
+    } catch (error) {
+      const alreadyReloaded = sessionStorage.getItem('chunk-reload-attempted')
+      if (!alreadyReloaded) {
+        sessionStorage.setItem('chunk-reload-attempted', '1')
+        window.location.reload()
+        // Nunca resolve — a página vai recarregar antes disso importar.
+        return new Promise(() => {})
+      }
+      throw error
+    }
+  })
+}
+
+const AdminLayout = lazyWithReload(() => import('./components/admin/AdminLayout'))
+const AdminDashboard = lazyWithReload(() => import('./pages/admin/Dashboard'))
+const AdminBooks = lazyWithReload(() => import('./pages/admin/Books'))
+const AdminRentals = lazyWithReload(() => import('./pages/admin/Rentals'))
+const AdminReturns = lazyWithReload(() => import('./pages/admin/Returns'))
+const AdminReaders = lazyWithReload(() => import('./pages/admin/Readers'))
+const AdminReaderDetail = lazyWithReload(() => import('./pages/admin/ReaderDetail'))
+const AdminCategories = lazyWithReload(() => import('./pages/admin/Categories'))
+const AdminSettings = lazyWithReload(() => import('./pages/admin/Settings'))
+const AdminNewRental = lazyWithReload(() => import('./pages/admin/NewRental'))
+const AdminPricingPlans = lazyWithReload(() => import('./pages/admin/PricingPlans'))
+const AdminReservations = lazyWithReload(() => import('./pages/admin/Reservations'))
 
 import { useAuthStore } from './stores/authStore'
 import { useSettingsStore } from './stores/settingsStore'

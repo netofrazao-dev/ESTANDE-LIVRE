@@ -21,13 +21,19 @@
 create extension if not exists pg_cron;
 create extension if not exists pg_net;
 
+-- Se você já tinha agendado antes (sem o timeout_milliseconds abaixo),
+-- desagenda a versão antiga primeiro — senão ficam dois jobs rodando.
+select cron.unschedule('notify-rentals-daily')
+where exists (select 1 from cron.job where jobname = 'notify-rentals-daily');
+
 select cron.schedule(
   'notify-rentals-daily',
   '0 9 * * *',  -- todo dia às 09h (horário do servidor Postgres, UTC por padrão)
   $$
   select net.http_post(
     url := 'https://SEU_PROJECT_REF.supabase.co/functions/v1/notify-rentals',
-    headers := '{"Authorization": "Bearer SEU_SERVICE_ROLE_KEY", "Content-Type": "application/json"}'::jsonb
+    headers := '{"Authorization": "Bearer SEU_SERVICE_ROLE_KEY", "Content-Type": "application/json"}'::jsonb,
+    timeout_milliseconds := 30000
   );
   $$
 );
