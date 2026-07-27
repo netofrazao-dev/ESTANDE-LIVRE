@@ -321,13 +321,18 @@ function RentalCard({ rental }) {
               </div>
             </div>
             <div>
-              <div className="eyebrow mb-1">Multa</div>
+              <div className="eyebrow mb-1">Multa em aberto</div>
               <div className={cn(
                 'font-mono text-lg tabular-nums font-medium',
                 fine.amount > 0 ? 'text-terracota' : 'text-cafe/40',
               )}>
                 {formatMoney(fine.amount)}
               </div>
+              {fine.alreadySettled > 0 && (
+                <div className="text-[10px] text-musgo mt-0.5">
+                  {formatMoney(fine.alreadySettled)} já pago antes
+                </div>
+              )}
             </div>
           </div>
 

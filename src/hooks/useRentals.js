@@ -291,6 +291,27 @@ export const useSetOrderDelivered = () => {
   })
 }
 
+// Quitar a multa acumulada até agora, com o livro ainda emprestado (não
+// devolvido). Trava o valor de hoje e continua contando dali pra frente.
+export const useRegisterPartialLatePayment = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: async ({ rentalId, method = 'cash', notes }) => {
+      const { data, error } = await supabase.rpc('register_partial_late_payment', {
+        rental_id_input: rentalId,
+        method,
+        notes_input: notes || null,
+      })
+      if (error) throw error
+      return data
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['rentals'] })
+      qc.invalidateQueries({ queryKey: ['admin', 'stats'] })
+    },
+  })
+}
+
 export const useRegisterPayment = () => {
   const qc = useQueryClient()
   return useMutation({

@@ -85,7 +85,8 @@ Abra o **SQL Editor** do seu projeto Supabase e execute, **nesta ordem exata**
 9. `supabase/migration_v7.sql` — WhatsApp e Instagram da loja
 10. `supabase/migration_v8.sql` — confirmação de entrega/retirada por pedido
 11. `supabase/migration_v9.sql` — ocultar livro do catálogo público
-12. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
+12. `supabase/migration_v10.sql` — pagamento parcial de multa com o livro ainda emprestado
+13. `supabase/seed.sql` — categorias e livros de exemplo (opcional)
 
 ### 3.1 Deploy da Edge Function de notificações (opcional, mas recomendado)
 
@@ -542,6 +543,30 @@ A regra de negócio de bloquear renovação quando há fila já existia desde
 o começo do sistema de reservas — essa tela só deixa isso visível pro
 admin, que antes precisava confiar que o sistema estava fazendo certo
 sem conseguir conferir.
+
+---
+
+## Multa de atraso — situação completa
+
+**Pro leitor:** enquanto o livro está com ele, a "Minha Estante" mostra ao
+vivo os dias de atraso e o valor da multa em aberto (atualiza sozinho,
+sem recarregar). Se parte já foi paga antes (ver abaixo), aparece
+"X já pago antes" logo abaixo do valor. Depois que o livro é devolvido,
+o histórico mostra "Quitado" ou "Em aberto" claramente.
+
+**Pro admin:** dá pra registrar pagamento de multa em três momentos:
+1. **Livro ainda emprestado, atrasado** — no relatório do pedido
+   (`/admin/emprestimos`, clique em qualquer pedido), aparece um link
+   "Quitar R$X agora, sem devolver o livro" pra cada item atrasado. Trava
+   o valor daquele momento; se ele demorar mais, a multa recomeça a
+   contar a partir dali, não do zero
+2. **No momento da devolução** (`/admin/devolucoes`) — o valor final já
+   sai descontando o que foi pago antes, então nunca cobra duas vezes o
+   mesmo período
+3. **Depois de devolvido** — pela lista de Empréstimos, perfil do leitor,
+   ou relatório do pedido, com escolha de forma de pagamento
+
+A partir da `migration_v10.sql`.
 
 ---
 

@@ -4,7 +4,7 @@ import {
   Truck, Store, BookOpen, User, Mail, Phone, MapPin, Calendar,
   CircleDollarSign, PackageCheck, AlertTriangle, Check, X,
 } from 'lucide-react'
-import { useMarkOrderPaid, useSetOrderDelivered } from '@/hooks/useRentals'
+import { useMarkOrderPaid, useSetOrderDelivered, useRegisterPartialLatePayment } from '@/hooks/useRentals'
 import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel, cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -14,9 +14,19 @@ export default function OrderDetailModal({ order, onClose }) {
   const [method, setMethod] = useState('cash')
   const markPaid = useMarkOrderPaid()
   const setDelivered = useSetOrderDelivered()
+  const partialPayment = useRegisterPartialLatePayment()
   const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
 
   const rentalIds = order.items.map((i) => i.id)
+
+  const handlePartialPayment = async (item) => {
+    try {
+      await partialPayment.mutateAsync({ rentalId: item.id, method })
+      toast.success('Multa quitada até agora — continua contando se ele demorar mais pra devolver.')
+    } catch (err) {
+      toast.error(err.message || 'Erro ao registrar.')
+    }
+  }
 
   const handleMarkPaid = async () => {
     try {
@@ -123,8 +133,22 @@ export default function OrderDetailModal({ order, onClose }) {
                       {item.renewals_count > 0 && <span className="text-sepia"> · já renovado</span>}
                     </div>
                     {fine.isLate && (
-                      <div className="text-[11px] text-terracota flex items-center gap-1 mt-1">
-                        <AlertTriangle className="w-3 h-3" /> Multa acumulada: {formatMoney(fine.amount)}
+                      <div className="mt-1">
+                        <div className="text-[11px] text-terracota flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" /> Multa em aberto: {formatMoney(fine.amount)}
+                          {fine.alreadySettled > 0 && (
+                            <span className="text-cafe/50"> (já quitado antes: {formatMoney(fine.alreadySettled)})</span>
+                          )}
+                        </div>
+                        {item.status === 'active' && fine.amount > 0 && (
+                          <button
+                            onClick={() => handlePartialPayment(item)}
+                            disabled={partialPayment.isPending}
+                            className="mt-1.5 text-[11px] text-musgo hover:underline underline-offset-4 disabled:opacity-50"
+                          >
+                            Quitar {formatMoney(fine.amount)} agora, sem devolver o livro
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

@@ -111,10 +111,26 @@ export const computeRentalFine = (rental, hasActiveReservation = false) => {
   }
 
   // Ativo: calcula ao vivo, escolhendo a taxa conforme reserva atual.
+  // Se já foi pago algo parcialmente (livro ainda emprestado), o VALOR
+  // devido conta só a partir de onde parou — mas "atrasado" continua
+  // sendo definido pelo vencimento em si, não pelo que já foi pago (senão
+  // quitar a multa de hoje faria o livro "deixar de estar atrasado" mesmo
+  // sem ter sido devolvido).
+  const now = new Date()
+  const isPastDue = due < now
+  const periodStart = rental.late_fee_settled_until
+    ? (typeof rental.late_fee_settled_until === 'string' ? parseISO(rental.late_fee_settled_until) : rental.late_fee_settled_until)
+    : due
   const rate = hasActiveReservation
     ? (rental.daily_fine_reserved ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
     : (rental.daily_fine_normal ?? rental.daily_fine_rate ?? RENTAL_CONFIG.dailyFine)
-  return calculateFine(due, new Date(), rate)
+  const fine = calculateFine(periodStart, now, rate)
+  return {
+    daysLate: fine.daysLate,
+    amount: fine.amount,
+    isLate: isPastDue,
+    alreadySettled: rental.late_fee_settled_amount || 0,
+  }
 }
 
 // Prevê data de devolução a partir de hoje
