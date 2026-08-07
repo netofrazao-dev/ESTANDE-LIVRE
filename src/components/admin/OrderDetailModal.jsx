@@ -4,7 +4,7 @@ import {
   Truck, Store, BookOpen, User, Mail, Phone, MapPin, Calendar,
   CircleDollarSign, PackageCheck, AlertTriangle, Check, X,
 } from 'lucide-react'
-import { useMarkOrderPaid, useSetOrderDelivered, useRegisterPartialLatePayment } from '@/hooks/useRentals'
+import { useMarkOrderPaid, useSetOrderDelivered, useRegisterPartialLatePayment, useRegisterPayment } from '@/hooks/useRentals'
 import { useBooksWithActiveWaitlist } from '@/hooks/usePricing'
 import { computeRentalFine, formatDatador, formatMoney, rentalStatusLabel, cn } from '@/lib/utils'
 import Modal from '@/components/ui/Modal'
@@ -15,6 +15,7 @@ export default function OrderDetailModal({ order, onClose }) {
   const markPaid = useMarkOrderPaid()
   const setDelivered = useSetOrderDelivered()
   const partialPayment = useRegisterPartialLatePayment()
+  const registerPayment = useRegisterPayment()
   const { data: waitlistSet = new Set() } = useBooksWithActiveWaitlist()
 
   const rentalIds = order.items.map((i) => i.id)
@@ -23,6 +24,23 @@ export default function OrderDetailModal({ order, onClose }) {
     try {
       await partialPayment.mutateAsync({ rentalId: item.id, method })
       toast.success('Multa quitada até agora — continua contando se ele demorar mais pra devolver.')
+    } catch (err) {
+      toast.error(err.message || 'Erro ao registrar.')
+    }
+  }
+
+  // Pra livro já devolvido (multa já travada) — diferente do pagamento
+  // parcial acima, que é só pra quando o livro ainda está com o leitor.
+  const handlePayReturnedItem = async (item) => {
+    try {
+      await registerPayment.mutateAsync({
+        rentalId: item.id,
+        payLate: (item.late_fee || 0) > 0 && !item.late_fee_paid,
+        payDamage: (item.damage_fee || 0) > 0 && !item.damage_fee_paid,
+        payRental: false,
+        method,
+      })
+      toast.success('Pagamento registrado.')
     } catch (err) {
       toast.error(err.message || 'Erro ao registrar.')
     }
@@ -122,7 +140,7 @@ export default function OrderDetailModal({ order, onClose }) {
                         'text-[10px] font-mono flex-shrink-0',
                         fine.isLate ? 'text-terracota font-semibold' : 'text-cafe/50',
                       )}>
-                        {fine.isLate ? 'atrasado' : rentalStatusLabel(item.status)}
+                        {item.status === 'active' && fine.isLate ? 'atrasado' : rentalStatusLabel(item.status)}
                       </span>
                     </div>
                     <div className="text-[11px] text-cafe/60 mt-0.5">
@@ -132,7 +150,7 @@ export default function OrderDetailModal({ order, onClose }) {
                       )}
                       {item.renewals_count > 0 && <span className="text-sepia"> · já renovado</span>}
                     </div>
-                    {fine.isLate && (
+                    {fine.isLate && item.status === 'active' && (
                       <div className="mt-1">
                         <div className="text-[11px] text-terracota flex items-center gap-1">
                           <AlertTriangle className="w-3 h-3" /> Multa em aberto: {formatMoney(fine.amount)}
@@ -140,7 +158,7 @@ export default function OrderDetailModal({ order, onClose }) {
                             <span className="text-cafe/50"> (já quitado antes: {formatMoney(fine.alreadySettled)})</span>
                           )}
                         </div>
-                        {item.status === 'active' && fine.amount > 0 && (
+                        {fine.amount > 0 && (
                           <button
                             onClick={() => handlePartialPayment(item)}
                             disabled={partialPayment.isPending}
@@ -150,6 +168,33 @@ export default function OrderDetailModal({ order, onClose }) {
                           </button>
                         )}
                       </div>
+                    )}
+
+                    {/* Livro já devolvido, com multa e/ou dano ainda não pagos */}
+                    {item.status !== 'active' && (
+                      (() => {
+                        const owesLate = (item.late_fee || 0) > 0 && !item.late_fee_paid
+                        const owesDamage = (item.damage_fee || 0) > 0 && !item.damage_fee_paid
+                        const pendingTotal = (owesLate ? item.late_fee : 0) + (owesDamage ? item.damage_fee : 0)
+                        if (!owesLate && !owesDamage) return null
+                        return (
+                          <div className="mt-1">
+                            <div className="text-[11px] text-terracota flex items-center gap-1">
+                              <AlertTriangle className="w-3 h-3" />
+                              {owesLate && `Multa: ${formatMoney(item.late_fee)}`}
+                              {owesLate && owesDamage && ' + '}
+                              {owesDamage && `Dano/reposição: ${formatMoney(item.damage_fee)}`}
+                            </div>
+                            <button
+                              onClick={() => handlePayReturnedItem(item)}
+                              disabled={registerPayment.isPending}
+                              className="mt-1.5 text-[11px] text-musgo hover:underline underline-offset-4 disabled:opacity-50"
+                            >
+                              Marcar {formatMoney(pendingTotal)} como pago (livro já devolvido)
+                            </button>
+                          </div>
+                        )
+                      })()
                     )}
                   </div>
                 </div>
